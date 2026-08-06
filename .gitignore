@@ -1,0 +1,29 @@
+# Secrets & local env
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!**/.env.example
+
+# Editor / agent
+.cursor/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Dependencies & builds
+node_modules/
+dist/
+build/
+*.local
+
+# Go
+backend/bin/
+backend/tmp/
+*.exe
+
+# Uploads / local data
+backend/uploads/
+*.log

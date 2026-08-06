@@ -1,0 +1,2 @@
+-- +goose Down
+-- PostgreSQL does not support removing enum values from club_mandate_role.
