@@ -83,13 +83,7 @@ func (s *Server) buildRouter() (chi.Router, *scheduler.BirthdayScheduler, error)
 
 	tokenManager := auth.NewTokenManager(s.cfg.JWTSecret, s.cfg.JWTAccessTTL)
 	mailer := email.NewClient(email.Config{
-		Enabled:          s.cfg.SMTP.Enabled || s.cfg.Brevo.APIKey != "",
-		Host:             s.cfg.SMTP.Host,
-		Port:             s.cfg.SMTP.Port,
-		Username:         s.cfg.SMTP.Username,
-		Password:         s.cfg.SMTP.Password,
-		From:             s.cfg.SMTP.From,
-		FromName:         s.cfg.SMTP.FromName,
+		Enabled:          s.cfg.Brevo.APIKey != "",
 		BrevoAPIKey:      s.cfg.Brevo.APIKey,
 		BrevoSenderEmail: s.cfg.Brevo.SenderEmail,
 		BrevoSenderName:  s.cfg.Brevo.SenderName,

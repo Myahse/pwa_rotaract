@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { apiRequest } from '../api/client'
 import type { AccessRequest, Club, ClubRegistrationRequest } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
+import { ExternalServiceLinks } from '../components/ExternalServiceLinks'
 import { IconAccess, IconClubs, IconPlus, IconRegister } from '../components/Icons'
 
 export function DashboardPage() {
@@ -101,6 +102,12 @@ export function DashboardPage() {
             </span>
           </Link>
         </div>
+      </section>
+
+      <section className="stack">
+        <h2>Tombola IUGB</h2>
+        <p className="muted small">Outils externes — organisateurs, campagnes e-mail et monitoring.</p>
+        <ExternalServiceLinks variant="grid" />
       </section>
 
       <section className="stack">

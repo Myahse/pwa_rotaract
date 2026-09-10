@@ -91,3 +91,41 @@ export function IconArrowRight(props: IconProps) {
     </svg>
   )
 }
+
+export function IconExternal(props: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden {...base} {...props}>
+      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+      <path d="M15 3h6v6M10 14 21 3" />
+    </svg>
+  )
+}
+
+export function IconOrganizer(props: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden {...base} {...props}>
+      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+      <circle cx="9" cy="7" r="4" />
+      <path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
+    </svg>
+  )
+}
+
+export function IconCampaign(props: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden {...base} {...props}>
+      <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+      <path d="m22 6-10 7L2 6" />
+    </svg>
+  )
+}
+
+export function IconMonitor(props: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden {...base} {...props}>
+      <rect x="2" y="3" width="20" height="14" rx="2" />
+      <path d="M8 21h8M12 17v4" />
+      <path d="M7 10h2M7 13h6" />
+    </svg>
+  )
+}

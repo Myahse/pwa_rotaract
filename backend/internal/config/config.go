@@ -37,7 +37,6 @@ type Config struct {
 
 	VAPID VAPIDConfig
 
-	SMTP  SMTPConfig
 	Brevo BrevoConfig
 
 	GoogleClientID string
@@ -47,16 +46,6 @@ type VAPIDConfig struct {
 	PublicKey  string
 	PrivateKey string
 	Subject    string
-}
-
-type SMTPConfig struct {
-	Enabled  bool
-	Host     string
-	Port     string
-	Username string
-	Password string
-	From     string
-	FromName string
 }
 
 type BrevoConfig struct {
@@ -88,15 +77,6 @@ func Load() (*Config, error) {
 			PublicKey:  os.Getenv("VAPID_PUBLIC_KEY"),
 			PrivateKey: os.Getenv("VAPID_PRIVATE_KEY"),
 			Subject:    getEnv("VAPID_SUBJECT", "mailto:admin@rotaract-civ.local"),
-		},
-		SMTP: SMTPConfig{
-			Enabled:  os.Getenv("SMTP_HOST") != "",
-			Host:     os.Getenv("SMTP_HOST"),
-			Port:     getEnv("SMTP_PORT", "587"),
-			Username: os.Getenv("SMTP_USER"),
-			Password: os.Getenv("SMTP_PASSWORD"),
-			From:     getEnv("SMTP_FROM", "noreply@rotaract-civ.local"),
-			FromName: getEnv("SMTP_FROM_NAME", "Rotaract CIV"),
 		},
 		Brevo: BrevoConfig{
 			APIKey:      os.Getenv("BREVO_API_KEY"),

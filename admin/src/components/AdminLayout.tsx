@@ -1,6 +1,7 @@
 import { Link, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
 import { IconAccess, IconCalendar, IconClubs, IconDashboard, IconDonate, IconRegister, IconWebsite } from './Icons'
+import { ExternalServiceLinks } from './ExternalServiceLinks'
 
 const nav = [
   { to: '/dashboard', label: 'Accueil', short: 'Accueil', icon: IconDashboard, match: (p: string) => p === '/dashboard' || p === '/' },
@@ -53,6 +54,7 @@ export function AdminLayout() {
             )
           })}
         </nav>
+        <ExternalServiceLinks />
         <div className="sidebar-footer">
           <div className="user-chip" style={{ maxWidth: '100%', color: 'inherit' }}>
             <span className="avatar-dot">{initials}</span>

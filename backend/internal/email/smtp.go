@@ -7,18 +7,11 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
-	"net/smtp"
 	"strings"
 )
 
 type Config struct {
 	Enabled          bool
-	Host             string
-	Port             string
-	Username         string
-	Password         string
-	From             string
-	FromName         string
 	BrevoAPIKey      string
 	BrevoSenderEmail string
 	BrevoSenderName  string
@@ -45,7 +38,7 @@ func (c *Client) SendRegistrationInvite(invite RegistrationInvite) error {
 	body := buildRegistrationInviteBody(invite)
 
 	if !c.cfg.Enabled {
-		c.logger.Info("email invite (smtp disabled, logged only)",
+		c.logger.Info("email invite (delivery disabled, logged only)",
 			"to", invite.To,
 			"subject", subject,
 			"register_url", invite.RegisterURL,
@@ -86,7 +79,7 @@ func (c *Client) SendClubAccess(access ClubAccessEmail) error {
 	body := buildClubAccessBody(access)
 
 	if !c.cfg.Enabled {
-		c.logger.Info("club access email (smtp disabled, logged only)",
+		c.logger.Info("club access email (delivery disabled, logged only)",
 			"to", access.To,
 			"subject", subject,
 			"register_url", access.RegisterURL,
@@ -103,43 +96,11 @@ func (c *Client) SendClubAccess(access ClubAccessEmail) error {
 }
 
 func (c *Client) send(to, subject, htmlBody string) error {
-	if c.cfg.BrevoAPIKey != "" {
-		return c.sendBrevo(to, subject, htmlBody)
+	if c.cfg.BrevoAPIKey == "" {
+		return fmt.Errorf("BREVO_API_KEY is required for email delivery")
 	}
-
-	from := c.cfg.From
-	if c.cfg.FromName != "" {
-		from = fmt.Sprintf("%s <%s>", c.cfg.FromName, c.cfg.From)
-	}
-
-	var msg bytes.Buffer
-	msg.WriteString(fmt.Sprintf("From: %s\r\n", from))
-	msg.WriteString(fmt.Sprintf("To: %s\r\n", to))
-	msg.WriteString(fmt.Sprintf("Subject: %s\r\n", subject))
-	msg.WriteString("MIME-Version: 1.0\r\n")
-	msg.WriteString("Content-Type: text/html; charset=UTF-8\r\n")
-	msg.WriteString("\r\n")
-	msg.WriteString(htmlBody)
-
-	addr := fmt.Sprintf("%s:%s", c.cfg.Host, c.cfg.Port)
-	auth := smtp.PlainAuth("", c.cfg.Username, c.cfg.Password, c.cfg.Host)
-
-	if err := smtp.SendMail(addr, auth, c.cfg.From, []string{to}, msg.Bytes()); err != nil {
-		return fmt.Errorf("send email: %w", err)
-	}
-
-	c.logger.Info("email sent", "to", to, "subject", subject)
-	return nil
-}
-
-func (c *Client) sendBrevo(to, subject, htmlBody string) error {
-	senderEmail := c.cfg.BrevoSenderEmail
-	if senderEmail == "" {
-		senderEmail = c.cfg.From
-	}
-	senderName := c.cfg.BrevoSenderName
-	if senderName == "" {
-		senderName = c.cfg.FromName
+	if c.cfg.BrevoSenderEmail == "" {
+		return fmt.Errorf("BREVO_SENDER_EMAIL is required for email delivery")
 	}
 
 	payload := struct {
@@ -156,8 +117,8 @@ func (c *Client) sendBrevo(to, subject, htmlBody string) error {
 		Subject:     subject,
 		HTMLContent: htmlBody,
 	}
-	payload.Sender.Email = senderEmail
-	payload.Sender.Name = senderName
+	payload.Sender.Email = c.cfg.BrevoSenderEmail
+	payload.Sender.Name = c.cfg.BrevoSenderName
 	payload.To = []struct {
 		Email string `json:"email"`
 	}{{Email: to}}

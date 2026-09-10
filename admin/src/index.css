@@ -409,6 +409,56 @@ code {
 }
 .quick-icon svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .quick-link small { display: block; font-weight: 500; color: var(--muted); font-size: 0.78rem; margin-top: 0.1rem; }
+.external-link { position: relative; padding-right: 1.5rem; }
+.external-link-icon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  color: var(--muted);
+}
+.external-link .external-link-icon {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+}
+.external-nav {
+  display: none;
+  gap: 0.15rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--line);
+}
+.external-nav-label {
+  margin: 0 0 0.35rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.external-nav-link {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.45rem 0;
+  color: var(--muted);
+  font-weight: 550;
+  font-size: 0.88rem;
+}
+.external-nav-link svg:first-child {
+  width: 18px;
+  height: 18px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  flex-shrink: 0;
+}
+.external-nav-link .external-link-icon {
+  margin-left: auto;
+}
+.external-nav-link:hover { color: var(--ink); }
 
 .club-list { display: grid; gap: 0; }
 .club-item {
@@ -615,7 +665,7 @@ code {
   .admin-bottom-nav { display: none; }
   .admin-sidebar {
     display: grid;
-    grid-template-rows: auto 1fr auto;
+    grid-template-rows: auto 1fr auto auto;
     gap: 1.5rem;
     padding: 1.75rem 1.25rem;
     background: var(--bg);
@@ -629,7 +679,8 @@ code {
   }
   .admin-sidebar .brand strong { color: var(--ink); }
   .admin-sidebar .brand p { color: var(--muted); display: block; }
-  .admin-sidebar nav { display: grid; gap: 0.1rem; align-content: start; }
+  .admin-sidebar nav { display: grid; gap: 0.1rem; align-content: start; overflow: auto; }
+  .external-nav { display: grid; }
   .admin-sidebar nav a {
     display: flex;
     align-items: center;

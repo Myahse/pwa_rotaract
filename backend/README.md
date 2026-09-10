@@ -26,7 +26,7 @@ Go HTTP API for the Rotaract CIV PWA.
 Google finish is implemented but **commented out for now** (routes + `GOOGLE_CLIENT_ID`).  
 When enabling: uncomment the Google routes in `server.go`, `/register-club` in the PWA, and set `GOOGLE_CLIENT_ID`.  
 Authorized JavaScript origins must include the PWA origin (e.g. `http://localhost:5173`).  
-Without SMTP, the finish link is logged to the API console.
+Without `BREVO_API_KEY`, transactional emails are logged to the API console instead of being sent.
 
 ## Public events (website)
 
@@ -80,7 +80,7 @@ go run ./cmd/server
 
 Migrations run automatically on startup. The first admin is created from `BOOTSTRAP_ADMIN_*` when no admin exists yet.
 
-Configure SMTP for production email delivery. In dev, if `SMTP_HOST` is empty, invite links are **logged to the console** instead.
+Configure Brevo for production email delivery (`BREVO_API_KEY`, `BREVO_SENDER_EMAIL`). In dev, if `BREVO_API_KEY` is empty, invite links are **logged to the console** instead.
 
 ### Database: local vs Neon
 
@@ -242,10 +242,9 @@ GET /api/v1/clubs/{clubID}/email-invites
 | `DATABASE_URL` | PostgreSQL connection string (local or Neon) |
 | `APP_PUBLIC_URL` | Frontend URL used in email links |
 | `INVITE_TTL` | Invite link validity (default `168h` = 7 days) |
-| `SMTP_HOST` | SMTP server (empty = dev mode, logs only) |
-| `SMTP_PORT` | Usually `587` |
-| `SMTP_USER` / `SMTP_PASSWORD` | SMTP credentials |
-| `SMTP_FROM` / `SMTP_FROM_NAME` | Sender address |
+| `BREVO_API_KEY` | Brevo API key (empty = dev mode, logs only) |
+| `BREVO_SENDER_EMAIL` | Verified sender address in Brevo |
+| `BREVO_SENDER_NAME` | Sender display name |
 
 ## Chat messages
 
