@@ -44,6 +44,9 @@ export type SocialPost = {
   id: string
   author_id: string
   club_id?: string
+  reposted_post_id?: string
+  quote_body?: string
+  original?: SocialPost
   body: string
   created_at: string
   updated_at: string

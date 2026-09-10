@@ -1,75 +1,159 @@
-import { LangSwitcher } from '../components/LangSwitcher'
+import { Link } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { BrandLogo } from '../components/BrandLogo'
+import { RevealSection } from '../components/RevealSection'
+import { apiRequest } from '../api/client'
+import type { FeaturedPostulant, SiteGalleryImage } from '../api/types'
 import { useI18n } from '../i18n'
+import { formatPostulantPeriod } from '../lib/postulantPeriod'
 
 export function HomePage() {
-  const { t } = useI18n()
+  const { t, lang } = useI18n()
+  const [gallery, setGallery] = useState<SiteGalleryImage[]>([])
+  const [postulant, setPostulant] = useState<FeaturedPostulant | null>(null)
 
+  useEffect(() => {
+    apiRequest<SiteGalleryImage[]>('/gallery')
+      .then((data) => setGallery(data ?? []))
+      .catch(() => setGallery([]))
+  }, [])
+
+  useEffect(() => {
+    apiRequest<FeaturedPostulant>('/featured-postulant')
+      .then((data) => setPostulant(data))
+      .catch(() => setPostulant(null))
+  }, [])
+
+  const postulantName = postulant
+    ? `${postulant.first_name} ${postulant.last_name}`.trim()
+    : ''
+  const postulantQuote = postulant
+    ? lang === 'fr'
+      ? postulant.quote_fr || postulant.quote_en
+      : postulant.quote_en || postulant.quote_fr
+    : ''
   return (
-    <div className="vitrine">
-      <header className="site-header">
-        <div className="brand-row">
-          <span className="brand-dot" aria-hidden />
-          <strong>{t.brand}</strong>
-        </div>
-        <nav className="site-nav" aria-label="Primary">
-          <a href="#about">{t.navAbout}</a>
-          <a href="#mission">{t.navMission}</a>
-          <a href="#contact">{t.navContact}</a>
-        </nav>
-        <LangSwitcher />
-      </header>
-
-      <main>
-        <section className="vitrine-hero">
-          <span className="brand-dot lg" aria-hidden />
+    <div className="home-scroll">
+      <RevealSection id="hero" className="home-section home-section--hero" immediate>
+        <div className="home-section-inner home-hero">
+          <BrandLogo hero onDark />
+          <p className="home-eyebrow">{t.heroEyebrow}</p>
           <h1>{t.heroTitle}</h1>
           <p className="lede">{t.heroLede}</p>
-        </section>
+          <div className="cta-row center">
+            <Link to="/events" className="btn-primary btn-on-hero">
+              {t.heroEventsCta}
+            </Link>
+            <a href="#about" className="btn-outline btn-on-hero-outline">
+              {t.heroAboutCta}
+            </a>
+          </div>
+          <a className="home-scroll-hint" href="#about" aria-label={t.scrollHint}>
+            <span>{t.scrollHint}</span>
+            <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+              <path
+                d="M12 16.5l-6-6 1.4-1.4 4.6 4.6 4.6-4.6 1.4 1.4-6 6z"
+                fill="currentColor"
+              />
+            </svg>
+          </a>
+        </div>
+      </RevealSection>
 
-        <section id="about" className="section">
+      <RevealSection id="about" className="home-section">
+        <div className="home-section-inner">
+          <p className="home-eyebrow">{t.aboutKicker}</p>
           <h2>{t.aboutTitle}</h2>
-          <p>{t.aboutBody}</p>
-        </section>
+          <p className="home-body">{t.aboutBody}</p>
+        </div>
+      </RevealSection>
 
-        <section id="mission" className="section">
+      <RevealSection id="mission" className="home-section home-section--alt">
+        <div className="home-section-inner">
+          <p className="home-eyebrow">{t.missionKicker}</p>
           <h2>{t.missionTitle}</h2>
-          <p>{t.missionBody}</p>
-        </section>
-
-        <section className="section">
-          <h2>{t.pillarsTitle}</h2>
-          <div className="pillar-grid">
+          <p className="mission-motto">{t.missionQuote}</p>
+          <p className="home-body">{t.missionBody}</p>
+          <ul className="mission-list">
             {t.pillars.map((p) => (
-              <article key={p.title} className="pillar">
+              <li key={p.title} className="mission-item">
                 <h3>{p.title}</h3>
                 <p>{p.text}</p>
-              </article>
+              </li>
             ))}
-          </div>
-        </section>
+          </ul>
+        </div>
+      </RevealSection>
 
-        <section className="section facts">
-          <h2>{t.factsTitle}</h2>
-          <dl className="fact-list">
-            {t.facts.map((f) => (
-              <div key={f.label} className="fact">
-                <dt>{f.label}</dt>
-                <dd>{f.value}</dd>
+      <RevealSection id="gallery" className="home-section">
+        <div className="home-section-inner home-section-inner--wide">
+          <p className="home-eyebrow">{t.galleryKicker}</p>
+          <h2>{t.galleryTitle}</h2>
+          <p className="home-body">{t.galleryBody}</p>
+          {gallery.length === 0 ? (
+            <p className="home-empty">{t.galleryEmpty}</p>
+          ) : (
+            <div className="home-gallery">
+              {gallery.map((item, index) => {
+                const caption = lang === 'fr' ? item.caption_fr || item.caption_en : item.caption_en || item.caption_fr
+                return (
+                  <figure key={item.id} className={`home-gallery-item home-gallery-item--${(index % 6) + 1}`}>
+                    <img src={item.url} alt={caption || t.galleryTitle} loading="lazy" decoding="async" />
+                    {caption ? <figcaption>{caption}</figcaption> : null}
+                  </figure>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      </RevealSection>
+
+      <RevealSection id="postulant" className="home-section home-section--postulant">
+        <div className="home-section-inner">
+          <p className="home-eyebrow">{t.postulantKicker}</p>
+          <h2>{t.postulantTitle}</h2>
+          {postulant ? (
+            <p className="home-postulant-period">
+              {t.postulantPeriodHint.replace(
+                '{period}',
+                formatPostulantPeriod(postulant.period_year, postulant.period_month, lang),
+              )}
+            </p>
+          ) : null}
+          {postulant ? (
+            <div className="home-postulant">
+              {postulant.flyer_url ? (
+                <img
+                  src={`${postulant.flyer_url}${postulant.flyer_url.includes('?') ? '&' : '?'}v=${encodeURIComponent(postulant.updated_at ?? '')}`}
+                  alt={postulantName || t.postulantTitle}
+                  className="home-postulant-flyer"
+                />
+              ) : null}
+              <div className="home-postulant-details">
+                {postulantName ? <p className="home-postulant-name">{postulantName}</p> : null}
+                {postulant.home_club ? (
+                  <p className="home-postulant-meta">{postulant.home_club}</p>
+                ) : null}
+                {postulantQuote ? <p className="home-postulant-quote">{postulantQuote}</p> : null}
+                <div className="home-postulant-facts">
+                  <p>
+                    <span>{t.postulantVisitsLabel}</span>
+                    {postulant.visit_count}
+                  </p>
+                  <p>
+                    <span>{t.postulantClubsLabel}</span>
+                    {postulant.clubs_visited?.length
+                      ? postulant.clubs_visited.join(' · ')
+                      : t.postulantNoClubs}
+                  </p>
+                </div>
               </div>
-            ))}
-          </dl>
-        </section>
-
-        <section id="contact" className="section">
-          <h2>{t.contactTitle}</h2>
-          <p>{t.contactBody}</p>
-          <a className="contact-mail" href={`mailto:${t.contactEmail}`}>
-            {t.contactEmail}
-          </a>
-        </section>
-      </main>
-
-      <footer className="vitrine-foot">{t.footer}</footer>
+            </div>
+          ) : (
+            <p className="home-empty">{t.postulantEmpty}</p>
+          )}
+        </div>
+      </RevealSection>
     </div>
   )
 }

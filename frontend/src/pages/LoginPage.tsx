@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { Eye, EyeOff } from 'lucide-react'
 import { useAuth } from '../auth/AuthContext'
 
 export function LoginPage() {
@@ -30,7 +31,10 @@ export function LoginPage() {
       <div className="login-glow" aria-hidden />
       <div className="login-panel">
         <div className="login-brand">
-          <span className="brand-dot xl" aria-hidden />
+          <picture>
+            <source srcSet="/logo-white.png" media="(prefers-color-scheme: dark)" />
+            <img className="login-logo" src="/logo.png" alt="Rotaract IUGB Club" />
+          </picture>
           <h1>Rotaract CIV</h1>
           <p>Connectez-vous pour accéder à votre club</p>
         </div>
@@ -64,11 +68,13 @@ export function LoginPage() {
                 className="password-toggle"
                 onClick={() => setShowPassword((v) => !v)}
                 aria-label={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
+                title={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
               >
-                {showPassword ? 'Masquer' : 'Voir'}
+                {showPassword ? <EyeOff size={18} aria-hidden="true" /> : <Eye size={18} aria-hidden="true" />}
               </button>
             </div>
           </label>
+          <Link className="forgot-link" to="/forgot-password">Mot de passe oublié ?</Link>
           {error && <p className="error" role="alert">{error}</p>}
           <button type="submit" className="btn-primary btn-lg btn-block" disabled={loading}>
             {loading ? 'Connexion…' : 'Entrer dans mon club'}

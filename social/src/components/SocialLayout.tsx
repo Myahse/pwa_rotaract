@@ -1,10 +1,24 @@
 import { Link, Outlet, useLocation } from 'react-router-dom'
+import { Building2, CircleUserRound, MessageCircle, Newspaper, Users } from 'lucide-react'
+import { useEffect, useState } from 'react'
 import { useAuth } from '../auth/AuthContext'
 import { LoginModal } from './LoginModal'
 
 export function SocialLayout() {
   const { user, logout, openLogin, loading } = useAuth()
   const location = useLocation()
+  const [darkMode, setDarkMode] = useState(() => window.matchMedia('(prefers-color-scheme: dark)').matches)
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = darkMode ? 'dark' : 'light'
+  }, [darkMode])
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
+    const handleThemeChange = (event: MediaQueryListEvent) => setDarkMode(event.matches)
+    mediaQuery.addEventListener('change', handleThemeChange)
+    return () => mediaQuery.removeEventListener('change', handleThemeChange)
+  }, [])
 
   const path = location.pathname
   const isFeed = path === '/'
@@ -23,14 +37,6 @@ export function SocialLayout() {
             <span className="brand-dot" aria-hidden />
             <span>Rotaract</span>
           </Link>
-
-          <nav className="top-nav" aria-label="Principal">
-            <Link to="/" className={isFeed || isPostDetail ? 'active' : ''}>Fil</Link>
-            <Link to="/groups" className={isGroups ? 'active' : ''}>Groupes</Link>
-            <Link to="/friends" className={isFriends ? 'active' : ''}>Amis</Link>
-            <Link to="/messages" className={isMessages ? 'active' : ''}>Messages</Link>
-            <Link to="/me" className={isProfile ? 'active' : ''}>Profil</Link>
-          </nav>
 
           <div className="top-actions">
             {loading ? null : user ? (
@@ -75,11 +81,26 @@ export function SocialLayout() {
       </div>
 
       <nav className={`bottom-nav show-mobile nav-5${isPostDetail ? ' hide-on-post' : ''}`} aria-label="Mobile">
-        <Link to="/" className={isFeed ? 'active' : ''}>Fil</Link>
-        <Link to="/groups" className={isGroups ? 'active' : ''}>Groupes</Link>
-        <Link to="/friends" className={isFriends ? 'active' : ''}>Amis</Link>
-        <Link to="/messages" className={isMessages ? 'active' : ''}>Msg</Link>
-        <Link to="/me" className={isProfile ? 'active' : ''}>Profil</Link>
+        <Link to="/" className={isFeed ? 'active' : ''}>
+          <Newspaper className="nav-icon" aria-hidden="true" />
+          <span>Fil</span>
+        </Link>
+        <Link to="/groups" className={isGroups ? 'active' : ''}>
+          <Building2 className="nav-icon" aria-hidden="true" />
+          <span>Groupes</span>
+        </Link>
+        <Link to="/friends" className={isFriends ? 'active' : ''}>
+          <Users className="nav-icon" aria-hidden="true" />
+          <span>Amis</span>
+        </Link>
+        <Link to="/messages" className={isMessages ? 'active' : ''}>
+          <MessageCircle className="nav-icon" aria-hidden="true" />
+          <span>Msg</span>
+        </Link>
+        <Link to="/me" className={isProfile ? 'active' : ''}>
+          <CircleUserRound className="nav-icon" aria-hidden="true" />
+          <span>Profil</span>
+        </Link>
       </nav>
 
       <LoginModal />

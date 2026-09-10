@@ -4,12 +4,28 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="theme-color" content="#ffffff" />
-    <meta name="description" content="Rotaract Côte d'Ivoire — site officiel" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#121214" media="(prefers-color-scheme: dark)" />
+    <meta name="description" content="Rotaract IUGB Club — site officiel du club" />
+    <link rel="preload" as="image" href="/hero-bg.png" type="image/png" fetchpriority="high" />
+    <link rel="preload" as="image" href="/logo.png" type="image/png" fetchpriority="high" media="(prefers-color-scheme: light)" />
+    <link rel="preload" as="image" href="/logo-white.png" type="image/png" fetchpriority="high" media="(prefers-color-scheme: dark)" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <title>Rotaract Côte d'Ivoire</title>
+    <link
+      rel="preload"
+      as="style"
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap"
+    />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap"
+      media="print"
+      onload="this.media='all'"
+    />
+    <noscript>
+      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&display=swap" />
+    </noscript>
+    <title>Rotaract IUGB Club</title>
   </head>
   <body>
     <div id="root"></div>

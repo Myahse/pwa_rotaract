@@ -188,12 +188,12 @@ func (h *RegistrationHandler) SubmitAccessRequest(w http.ResponseWriter, r *http
 	}
 
 	req, err := h.registration.SubmitAccessRequest(r.Context(), input)
-	if errors.Is(err, service.ErrEmailAlreadyUsed) {
-		WriteError(w, http.StatusConflict, "email is already registered")
+	if errors.Is(err, service.ErrPendingRequest) || errors.Is(err, service.ErrAlreadyClubMember) {
+		WriteError(w, http.StatusConflict, err.Error())
 		return
 	}
-	if errors.Is(err, service.ErrPendingRequest) {
-		WriteError(w, http.StatusConflict, err.Error())
+	if errors.Is(err, service.ErrPasswordRequired) {
+		WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 	if err != nil {

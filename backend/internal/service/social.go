@@ -139,6 +139,24 @@ func (s *SocialService) CreatePost(ctx context.Context, user *domain.User, input
 	return s.GetPost(ctx, user, post.ID)
 }
 
+func (s *SocialService) Repost(ctx context.Context, user *domain.User, postID uuid.UUID, quoteBody string) (*domain.SocialPost, error) {
+	if err := s.requireUser(user); err != nil {
+		return nil, err
+	}
+	quoteBody = strings.TrimSpace(quoteBody)
+	if utf8.RuneCountInString(quoteBody) > 5000 {
+		return nil, errors.New("quote must be at most 5000 characters")
+	}
+	post, err := s.social.CreateRepost(ctx, user.ID, postID, quoteBody)
+	if errors.Is(err, repository.ErrNotFound) {
+		return nil, ErrSocialPostNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	return s.GetPost(ctx, user, post.ID)
+}
+
 func (s *SocialService) GetPost(ctx context.Context, user *domain.User, postID uuid.UUID) (*domain.SocialPost, error) {
 	row, err := s.social.GetPost(ctx, postID, s.viewerID(user))
 	if errors.Is(err, repository.ErrNotFound) {
@@ -312,6 +330,13 @@ func (s *SocialService) attachMedia(ctx context.Context, rows []repository.Socia
 			}
 		}
 		post.Media = media
+		if post.RepostedPostID != nil {
+			original, err := s.GetPost(ctx, nil, *post.RepostedPostID)
+			if err != nil {
+				return nil, err
+			}
+			post.Original = original
+		}
 		out = append(out, post)
 	}
 	return out, nil

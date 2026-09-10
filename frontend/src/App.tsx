@@ -11,6 +11,9 @@ import { LoginPage } from './pages/LoginPage'
 import { RegisterPage } from './pages/RegisterPage'
 import { ProfilePage } from './pages/ProfilePage'
 import { HeadManagePage } from './pages/HeadManagePage'
+import { ForgotPasswordPage } from './pages/ForgotPasswordPage'
+import { ResetPasswordPage } from './pages/ResetPasswordPage'
+import { ClubRegisterCompletePage } from './pages/ClubRegisterCompletePage'
 
 function PublicOnly({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth()
@@ -26,7 +29,10 @@ export default function App() {
         <Route path="/" element={<PublicOnly><LoginPage /></PublicOnly>} />
         <Route path="/login" element={<Navigate to="/" replace />} />
         <Route path="/register" element={<PublicOnly><RegisterPage /></PublicOnly>} />
+        <Route path="/register-club" element={<PublicOnly><ClubRegisterCompletePage /></PublicOnly>} />
         <Route path="/access-request" element={<PublicOnly><AccessRequestPage /></PublicOnly>} />
+        <Route path="/forgot-password" element={<PublicOnly><ForgotPasswordPage /></PublicOnly>} />
+        <Route path="/reset-password" element={<PublicOnly><ResetPasswordPage /></PublicOnly>} />
         <Route element={<ProtectedRoute />}>
           <Route element={<AppLayout />}>
             <Route path="home" element={<HomePage />} />

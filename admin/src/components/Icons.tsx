@@ -40,12 +40,38 @@ export function IconAccess(props: IconProps) {
   )
 }
 
+export function IconDonate(props: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden {...base} {...props}>
+      <path d="M12 21s-7-4.4-7-9.1A3.7 3.7 0 0 1 12 9a3.7 3.7 0 0 1 7 2.9c0 4.7-7 9.1-7 9.1Z" />
+    </svg>
+  )
+}
+
 export function IconRegister(props: IconProps) {
   return (
     <svg viewBox="0 0 24 24" aria-hidden {...base} {...props}>
       <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
       <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
       <path d="M8 7h8M8 11h6" />
+    </svg>
+  )
+}
+
+export function IconWebsite(props: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden {...base} {...props}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18" />
+    </svg>
+  )
+}
+
+export function IconCalendar(props: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden {...base} {...props}>
+      <rect x="3" y="5" width="18" height="16" rx="2" />
+      <path d="M8 3v4M16 3v4M3 10h18" />
     </svg>
   )
 }

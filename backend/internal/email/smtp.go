@@ -2,20 +2,26 @@ package email
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
+	"io"
 	"log/slog"
+	"net/http"
 	"net/smtp"
 	"strings"
 )
 
 type Config struct {
-	Enabled  bool
-	Host     string
-	Port     string
-	Username string
-	Password string
-	From     string
-	FromName string
+	Enabled          bool
+	Host             string
+	Port             string
+	Username         string
+	Password         string
+	From             string
+	FromName         string
+	BrevoAPIKey      string
+	BrevoSenderEmail string
+	BrevoSenderName  string
 }
 
 type Client struct {
@@ -58,6 +64,23 @@ type ClubAccessEmail struct {
 	ExpiresAt   string
 }
 
+type PasswordResetEmail struct {
+	To        string
+	FirstName string
+	ResetURL  string
+	ExpiresAt string
+}
+
+func (c *Client) SendPasswordReset(reset PasswordResetEmail) error {
+	subject := "Réinitialisez votre mot de passe — Rotaract CIV"
+	body := renderTemplate("password-reset.html", reset)
+	if !c.cfg.Enabled {
+		c.logger.Info("password reset email (delivery disabled, logged only)", "to", reset.To, "reset_url", reset.ResetURL)
+		return nil
+	}
+	return c.send(reset.To, subject, body)
+}
+
 func (c *Client) SendClubAccess(access ClubAccessEmail) error {
 	subject := fmt.Sprintf("Finalisez l'inscription de %s — Rotaract CIV", access.ClubName)
 	body := buildClubAccessBody(access)
@@ -80,6 +103,10 @@ func (c *Client) SendClubAccess(access ClubAccessEmail) error {
 }
 
 func (c *Client) send(to, subject, htmlBody string) error {
+	if c.cfg.BrevoAPIKey != "" {
+		return c.sendBrevo(to, subject, htmlBody)
+	}
+
 	from := c.cfg.From
 	if c.cfg.FromName != "" {
 		from = fmt.Sprintf("%s <%s>", c.cfg.FromName, c.cfg.From)
@@ -105,55 +132,76 @@ func (c *Client) send(to, subject, htmlBody string) error {
 	return nil
 }
 
+func (c *Client) sendBrevo(to, subject, htmlBody string) error {
+	senderEmail := c.cfg.BrevoSenderEmail
+	if senderEmail == "" {
+		senderEmail = c.cfg.From
+	}
+	senderName := c.cfg.BrevoSenderName
+	if senderName == "" {
+		senderName = c.cfg.FromName
+	}
+
+	payload := struct {
+		Sender struct {
+			Email string `json:"email"`
+			Name  string `json:"name,omitempty"`
+		} `json:"sender"`
+		To []struct {
+			Email string `json:"email"`
+		} `json:"to"`
+		Subject     string `json:"subject"`
+		HTMLContent string `json:"htmlContent"`
+	}{
+		Subject:     subject,
+		HTMLContent: htmlBody,
+	}
+	payload.Sender.Email = senderEmail
+	payload.Sender.Name = senderName
+	payload.To = []struct {
+		Email string `json:"email"`
+	}{{Email: to}}
+
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("encode Brevo email: %w", err)
+	}
+
+	req, err := http.NewRequest(http.MethodPost, "https://api.brevo.com/v3/smtp/email", bytes.NewReader(body))
+	if err != nil {
+		return fmt.Errorf("create Brevo email request: %w", err)
+	}
+	req.Header.Set("accept", "application/json")
+	req.Header.Set("api-key", c.cfg.BrevoAPIKey)
+	req.Header.Set("content-type", "application/json")
+
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return fmt.Errorf("send Brevo email: %w", err)
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode < http.StatusOK || res.StatusCode >= http.StatusMultipleChoices {
+		responseBody, _ := io.ReadAll(io.LimitReader(res.Body, 4096))
+		return fmt.Errorf("Brevo email rejected with status %d: %s", res.StatusCode, strings.TrimSpace(string(responseBody)))
+	}
+
+	c.logger.Info("email sent via Brevo", "to", to, "subject", subject)
+	return nil
+}
+
 func buildRegistrationInviteBody(invite RegistrationInvite) string {
-	return fmt.Sprintf(`<!DOCTYPE html>
-<html lang="fr">
-<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #222;">
-  <h2>Bienvenue sur Rotaract CIV</h2>
-  <p>Vous avez été invité(e) à rejoindre <strong>%s</strong>.</p>
-  <p>Cliquez sur le lien ci-dessous pour créer votre compte et compléter votre inscription&nbsp;:</p>
-  <p><a href="%s" style="display:inline-block;padding:12px 20px;background:#be034d;color:#fff;text-decoration:none;border-radius:6px;">Créer mon compte</a></p>
-  <p>Ou copiez ce lien dans votre navigateur&nbsp;:<br><a href="%s">%s</a></p>
-  <p style="color:#666;font-size:14px;">Ce lien expire le %s.</p>
-  <p style="color:#666;font-size:14px;">Si vous n'attendiez pas cet email, vous pouvez l'ignorer.</p>
-</body>
-</html>`,
-		escapeHTML(invite.ClubName),
-		invite.RegisterURL,
-		invite.RegisterURL,
-		invite.RegisterURL,
-		escapeHTML(invite.ExpiresAt),
-	)
+	return renderTemplate("registration-invite.html", invite)
 }
 
 func buildClubAccessBody(access ClubAccessEmail) string {
-	return fmt.Sprintf(`<!DOCTYPE html>
-<html lang="fr">
-<body style="font-family: Arial, sans-serif; line-height: 1.6; color: #222;">
-  <h2>Votre club est approuvé</h2>
-  <p>Bonjour %s,</p>
-  <p>La demande d'inscription du club <strong>%s</strong> a été acceptée sur Rotaract CIV.</p>
-  <p>Cliquez sur le lien ci-dessous pour finaliser votre inscription avec Google&nbsp;:</p>
-  <p><a href="%s" style="display:inline-block;padding:12px 20px;background:#be034d;color:#fff;text-decoration:none;border-radius:6px;">Finaliser avec Google</a></p>
-  <p>Ou copiez ce lien&nbsp;:<br><a href="%s">%s</a></p>
-  <p style="color:#666;font-size:14px;">Utilisez le compte Google correspondant à l'email de la demande. Ce lien expire le %s.</p>
-</body>
-</html>`,
-		escapeHTML(access.ContactName),
-		escapeHTML(access.ClubName),
-		access.RegisterURL,
-		access.RegisterURL,
-		access.RegisterURL,
-		escapeHTML(access.ExpiresAt),
-	)
+	return renderTemplate("club-access.html", access)
 }
 
-func escapeHTML(value string) string {
-	replacer := strings.NewReplacer(
-		"&", "&amp;",
-		"<", "&lt;",
-		">", "&gt;",
-		`"`, "&quot;",
-	)
-	return replacer.Replace(value)
+func renderTemplate(name string, data any) string {
+	var body bytes.Buffer
+	if err := emailTemplates.ExecuteTemplate(&body, name, data); err != nil {
+		return ""
+	}
+	return body.String()
 }

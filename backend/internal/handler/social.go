@@ -193,6 +193,35 @@ func (h *SocialHandler) DeletePost(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+func (h *SocialHandler) Repost(w http.ResponseWriter, r *http.Request) {
+	user, ok := authctx.UserFromContext(r.Context())
+	if !ok {
+		WriteError(w, http.StatusUnauthorized, "connexion requise")
+		return
+	}
+	postID, err := SocialPostIDFromRequest(r)
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	var input struct {
+		QuoteBody string `json:"quote_body"`
+	}
+	if err := DecodeJSON(r, &input); err != nil {
+		WriteError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	post, err := h.social.Repost(r.Context(), user, postID, input.QuoteBody)
+	if h.writeSocialErr(w, err) {
+		return
+	}
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "failed to repost")
+		return
+	}
+	WriteJSON(w, http.StatusCreated, post)
+}
+
 func (h *SocialHandler) ListComments(w http.ResponseWriter, r *http.Request) {
 	user := h.optionalUser(r)
 	postID, err := SocialPostIDFromRequest(r)

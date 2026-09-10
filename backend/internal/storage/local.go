@@ -13,7 +13,7 @@ type LocalStore struct {
 }
 
 func NewLocalStore(rootDir string) (*LocalStore, error) {
-	for _, sub := range []string{"avatars", "clubs", "diary", "social"} {
+	for _, sub := range []string{"avatars", "clubs", "diary", "social", "events", "site", "donations"} {
 		if err := os.MkdirAll(filepath.Join(rootDir, sub), 0o755); err != nil {
 			return nil, fmt.Errorf("create upload dir: %w", err)
 		}
@@ -189,6 +189,67 @@ func (s *LocalStore) RemoveByRelativePath(relativePath string) error {
 		return fmt.Errorf("remove file: %w", err)
 	}
 	return nil
+}
+
+func (s *LocalStore) ensureParentDir(fullPath string) error {
+	return os.MkdirAll(filepath.Dir(fullPath), 0o755)
+}
+
+func (s *LocalStore) SaveDonationReceipt(donationID, ext string, reader io.Reader) (string, error) {
+	relativePath := filepath.ToSlash(filepath.Join("donations", donationID+ext))
+	fullPath := filepath.Join(s.rootDir, relativePath)
+	if err := s.ensureParentDir(fullPath); err != nil {
+		return "", fmt.Errorf("create donation dir: %w", err)
+	}
+
+	file, err := os.Create(fullPath)
+	if err != nil {
+		return "", fmt.Errorf("create donation receipt: %w", err)
+	}
+	defer file.Close()
+
+	if _, err := io.Copy(file, reader); err != nil {
+		_ = os.Remove(fullPath)
+		return "", fmt.Errorf("write donation receipt: %w", err)
+	}
+	return relativePath, nil
+}
+
+func (s *LocalStore) SaveSiteImage(name, ext string, reader io.Reader) (string, error) {
+	relativePath := filepath.ToSlash(filepath.Join("site", name+ext))
+	fullPath := filepath.Join(s.rootDir, relativePath)
+	if err := s.ensureParentDir(fullPath); err != nil {
+		return "", fmt.Errorf("create site dir: %w", err)
+	}
+
+	file, err := os.Create(fullPath)
+	if err != nil {
+		return "", fmt.Errorf("create site image: %w", err)
+	}
+	defer file.Close()
+
+	if _, err := io.Copy(file, reader); err != nil {
+		_ = os.Remove(fullPath)
+		return "", fmt.Errorf("write site image: %w", err)
+	}
+	return relativePath, nil
+}
+
+func (s *LocalStore) SaveEventImage(eventID, imageID, ext string, reader io.Reader) (string, error) {
+	relativePath := filepath.ToSlash(filepath.Join("events", eventID+"_"+imageID+ext))
+	fullPath := filepath.Join(s.rootDir, relativePath)
+
+	file, err := os.Create(fullPath)
+	if err != nil {
+		return "", fmt.Errorf("create event image: %w", err)
+	}
+	defer file.Close()
+
+	if _, err := io.Copy(file, reader); err != nil {
+		_ = os.Remove(fullPath)
+		return "", fmt.Errorf("write event image: %w", err)
+	}
+	return relativePath, nil
 }
 
 func (s *LocalStore) RootDir() string {

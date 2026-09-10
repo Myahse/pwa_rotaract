@@ -24,25 +24,26 @@ func (r *AccessRequestRepository) Create(ctx context.Context, req *domain.Access
 	query := `
 		INSERT INTO access_requests (
 			club_id, club_name, requested_role_id, email, password_hash,
-			first_name, last_name, phone, birth_date, profession, member_since
+			first_name, last_name, phone, birth_date, profession, member_since, existing_user_id
 		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
 		RETURNING id, status, created_at
 	`
 	err := r.pool.QueryRow(ctx, query,
 		req.ClubID, req.ClubName, req.RequestedRoleID, req.Email, passwordHash,
-		req.FirstName, req.LastName, req.Phone, req.BirthDate, req.Profession, req.MemberSince,
+		req.FirstName, req.LastName, req.Phone, req.BirthDate, req.Profession, req.MemberSince, req.ExistingUserID,
 	).Scan(&req.ID, &req.Status, &req.CreatedAt)
 	if err != nil {
 		return fmt.Errorf("create access request: %w", err)
 	}
+	req.KnownMember = req.ExistingUserID != nil
 	return nil
 }
 
 func (r *AccessRequestRepository) GetByID(ctx context.Context, id uuid.UUID) (*domain.AccessRequest, error) {
 	return r.scanRequest(r.pool.QueryRow(ctx, `
 		SELECT id, club_id, club_name, requested_role_id, email,
-		       first_name, last_name, phone, birth_date, profession, member_since,
+		       first_name, last_name, phone, birth_date, profession, member_since, existing_user_id,
 		       status, reviewed_by, review_note, reviewed_at, created_at
 		FROM access_requests WHERE id = $1
 	`, id))
@@ -51,7 +52,7 @@ func (r *AccessRequestRepository) GetByID(ctx context.Context, id uuid.UUID) (*d
 func (r *AccessRequestRepository) List(ctx context.Context, clubID *uuid.UUID, status *domain.AccessRequestStatus) ([]domain.AccessRequest, error) {
 	query := `
 		SELECT id, club_id, club_name, requested_role_id, email,
-		       first_name, last_name, phone, birth_date, profession, member_since,
+		       first_name, last_name, phone, birth_date, profession, member_since, existing_user_id,
 		       status, reviewed_by, review_note, reviewed_at, created_at
 		FROM access_requests
 		WHERE 1=1
@@ -120,7 +121,7 @@ func (r *AccessRequestRepository) scanRequest(row pgx.Row) (*domain.AccessReques
 	var req domain.AccessRequest
 	err := row.Scan(
 		&req.ID, &req.ClubID, &req.ClubName, &req.RequestedRoleID, &req.Email,
-		&req.FirstName, &req.LastName, &req.Phone, &req.BirthDate, &req.Profession, &req.MemberSince,
+		&req.FirstName, &req.LastName, &req.Phone, &req.BirthDate, &req.Profession, &req.MemberSince, &req.ExistingUserID,
 		&req.Status, &req.ReviewedBy, &req.ReviewNote, &req.ReviewedAt, &req.CreatedAt,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -129,6 +130,7 @@ func (r *AccessRequestRepository) scanRequest(row pgx.Row) (*domain.AccessReques
 	if err != nil {
 		return nil, fmt.Errorf("scan access request: %w", err)
 	}
+	req.KnownMember = req.ExistingUserID != nil
 	return &req, nil
 }
 
@@ -136,11 +138,12 @@ func (r *AccessRequestRepository) scanRequestRow(rows pgx.Rows) (*domain.AccessR
 	var req domain.AccessRequest
 	err := rows.Scan(
 		&req.ID, &req.ClubID, &req.ClubName, &req.RequestedRoleID, &req.Email,
-		&req.FirstName, &req.LastName, &req.Phone, &req.BirthDate, &req.Profession, &req.MemberSince,
+		&req.FirstName, &req.LastName, &req.Phone, &req.BirthDate, &req.Profession, &req.MemberSince, &req.ExistingUserID,
 		&req.Status, &req.ReviewedBy, &req.ReviewNote, &req.ReviewedAt, &req.CreatedAt,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("scan access request: %w", err)
 	}
+	req.KnownMember = req.ExistingUserID != nil
 	return &req, nil
 }

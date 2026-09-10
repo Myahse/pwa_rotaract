@@ -89,6 +89,7 @@ export function AccessRequestsPage() {
                 <div>
                   <h3>{r.first_name} {r.last_name}</h3>
                   <p className="muted small">{r.email}</p>
+                  {r.known_member ? <p className="muted small">Compte déjà en base (tombola / club)</p> : null}
                 </div>
                 <span className={statusBadge(r.status)}>{r.status}</span>
               </header>

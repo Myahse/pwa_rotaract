@@ -27,32 +27,36 @@ export function RegisterPage() {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
 
+  const [inviteCodeInput, setInviteCodeInput] = useState('')
+
   useEffect(() => {
     async function load() {
       try {
+        setError('')
         if (token) {
           const data = await apiRequest<InvitePreview & { email: string }>(`/invite/token/${token}`)
           setPreview(data)
           setForm((f) => ({ ...f, email: data.email }))
           const membre = data.roles.find((r) => r.name === 'Membre')
           if (membre) setRoleId(membre.id)
-        } else if (code) {
-          const data = await apiRequest<InvitePreview>(`/invite/${code}`)
+        } else if (code || inviteCodeInput) {
+          const targetCode = code || inviteCodeInput
+          const data = await apiRequest<InvitePreview>(`/invite/${targetCode}`)
           setPreview(data)
           const membre = data.roles.find((r) => r.name === 'Membre')
           if (membre) setRoleId(membre.id)
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Invitation invalide')
+        setPreview(null)
       }
     }
-    if (token || code) load()
-    else setError('Lien d\'invitation manquant')
-  }, [token, code])
+    if (token || code || inviteCodeInput.length >= 4) load()
+  }, [token, code, inviteCodeInput])
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault()
-    if (!roleId) return
+    if (!preview || !roleId) return
     setLoading(true)
     setError('')
     try {
@@ -61,7 +65,7 @@ export function RegisterPage() {
         body: JSON.stringify({
           ...form,
           token: token || undefined,
-          invite_code: code || undefined,
+          invite_code: code || inviteCodeInput || undefined,
           role_id: roleId,
         }),
       })
@@ -78,13 +82,29 @@ export function RegisterPage() {
       <div className="auth-card wide">
         <Link to="/" className="auth-back">← Connexion</Link>
         <h1>Créer un compte</h1>
-        {preview && <p className="muted">Club : <strong>{preview.club.name}</strong></p>}
+        
+        {!token && !code && !preview && (
+          <div className="stack" style={{ marginBottom: '1.5rem' }}>
+            <label>
+              Code d'invitation du club
+              <input 
+                placeholder="Ex: AB123" 
+                value={inviteCodeInput} 
+                onChange={(e) => setInviteCodeInput(e.target.value.toUpperCase())}
+              />
+            </label>
+            <p className="small muted">Saisissez le code fourni par votre club pour continuer.</p>
+          </div>
+        )}
+
+        {preview && <p className="success-banner">Club : <strong>{preview.club.name}</strong></p>}
+        
         <form onSubmit={onSubmit} className="stack">
-          <label>Prénom<input value={form.first_name} onChange={(e) => setForm({ ...form, first_name: e.target.value })} required /></label>
-          <label>Nom<input value={form.last_name} onChange={(e) => setForm({ ...form, last_name: e.target.value })} required /></label>
-          <label>Email<input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required readOnly={!!token} /></label>
-          <label>Mot de passe<input type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required minLength={8} /></label>
-          <label>Profession<input value={form.profession} onChange={(e) => setForm({ ...form, profession: e.target.value })} /></label>
+          <label>Prénom<input value={form.first_name} onChange={(e) => setForm({ ...form, first_name: e.target.value })} required disabled={!preview} /></label>
+          <label>Nom<input value={form.last_name} onChange={(e) => setForm({ ...form, last_name: e.target.value })} required disabled={!preview} /></label>
+          <label>Email<input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required readOnly={!!token} disabled={!preview} /></label>
+          <label>Mot de passe<input type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required minLength={8} disabled={!preview} /></label>
+          <label>Profession<input value={form.profession} onChange={(e) => setForm({ ...form, profession: e.target.value })} disabled={!preview} /></label>
           {preview && preview.roles.length > 0 && (
             <label>
               Rôle

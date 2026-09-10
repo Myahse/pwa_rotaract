@@ -17,26 +17,28 @@ type Config struct {
 	CORSOrigins []string
 	LogLevel    slog.Level
 
-	DatabaseURL string
-	JWTSecret   string
-	JWTAccessTTL time.Duration
+	DatabaseURL      string
+	JWTSecret        string
+	JWTAccessTTL     time.Duration
+	PasswordResetTTL time.Duration
 
 	BootstrapAdminEmail    string
 	BootstrapAdminPassword string
 
-	AppPublicURL string
-	APIPublicURL string
-	InviteTTL    time.Duration
-	UploadDir    string
+	AppPublicURL  string
+	APIPublicURL  string
+	InviteTTL     time.Duration
+	UploadDir     string
 	MaxAvatarSize int64
 
-	BirthdayTimezone  string
+	BirthdayTimezone   string
 	BirthdayNotifyHour int
-	CronSecret        string
+	CronSecret         string
 
 	VAPID VAPIDConfig
 
-	SMTP SMTPConfig
+	SMTP  SMTPConfig
+	Brevo BrevoConfig
 
 	GoogleClientID string
 }
@@ -55,6 +57,12 @@ type SMTPConfig struct {
 	Password string
 	From     string
 	FromName string
+}
+
+type BrevoConfig struct {
+	APIKey      string
+	SenderEmail string
+	SenderName  string
 }
 
 func Load() (*Config, error) {
@@ -90,6 +98,11 @@ func Load() (*Config, error) {
 			From:     getEnv("SMTP_FROM", "noreply@rotaract-civ.local"),
 			FromName: getEnv("SMTP_FROM_NAME", "Rotaract CIV"),
 		},
+		Brevo: BrevoConfig{
+			APIKey:      os.Getenv("BREVO_API_KEY"),
+			SenderEmail: os.Getenv("BREVO_SENDER_EMAIL"),
+			SenderName:  getEnv("BREVO_SENDER_NAME", "Rotaract CIV"),
+		},
 		// Deferred: uncomment GOOGLE_CLIENT_ID in .env when enabling Google Sign-In.
 		GoogleClientID: os.Getenv("GOOGLE_CLIENT_ID"),
 	}
@@ -105,6 +118,12 @@ func Load() (*Config, error) {
 		return nil, fmt.Errorf("invalid INVITE_TTL: %w", err)
 	}
 	cfg.InviteTTL = inviteTTL
+
+	resetTTL, err := time.ParseDuration(getEnv("PASSWORD_RESET_TTL", "1h"))
+	if err != nil {
+		return nil, fmt.Errorf("invalid PASSWORD_RESET_TTL: %w", err)
+	}
+	cfg.PasswordResetTTL = resetTTL
 
 	level, err := parseLogLevel(getEnv("LOG_LEVEL", "info"))
 	if err != nil {

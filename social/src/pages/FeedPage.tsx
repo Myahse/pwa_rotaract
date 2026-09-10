@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
+import { Repeat2 } from 'lucide-react'
 import { apiRequest, apiUpload } from '../api/client'
 import type { SocialPost } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
 import { getToken } from '../auth/storage'
 import { SkeletonFeed } from '../components/Skeleton'
 import { SuggestionsPanel } from '../components/SuggestionsPanel'
+import { SharePostModal } from '../components/SharePostModal'
 
 function authorName(p: { author?: { first_name: string; last_name: string } }) {
   const a = p.author
@@ -30,6 +32,7 @@ export function FeedPage() {
   const [tab, setTab] = useState<'all' | 'following'>('all')
   const [error, setError] = useState('')
   const [ready, setReady] = useState(false)
+  const [sharePost, setSharePost] = useState<SocialPost | null>(null)
 
   const [body, setBody] = useState('')
   const [clubId, setClubId] = useState('')
@@ -122,6 +125,21 @@ export function FeedPage() {
         )))
       }
     }, 'Connectez-vous pour aimer une publication')
+  }
+
+  function repost(post: SocialPost, quoteBody: string) {
+    requireAuth(async () => {
+      try {
+        const created = await apiRequest<SocialPost>(
+          `/social/posts/${post.id}/repost`,
+          { method: 'POST', body: JSON.stringify({ quote_body: quoteBody }) },
+          getToken(),
+        )
+        setPosts((prev) => [created, ...prev.filter((p) => p.id !== created.id)])
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Repartage impossible')
+      }
+    }, 'Connectez-vous pour repartager une publication')
   }
 
   function followAuthor(authorId: string) {
@@ -304,22 +322,44 @@ export function FeedPage() {
               </div>
             </header>
 
-            {post.body && (
+            {post.reposted_post_id && <p className="repost-label"><Repeat2 size={14} aria-hidden="true" /> Repartagé</p>}
+            {(post.quote_body || post.body) && (
               <button type="button" className="post-body post-body-btn" onClick={() => openPost(post.id)}>
-                {post.body}
+                {post.quote_body || post.body}
+              </button>
+            )}
+
+            {post.original && (
+              <button
+                type="button"
+                className="original-post-preview"
+                onClick={() => openPost(post.original!.id)}
+              >
+                <p className="repost-label">Publication originale de {authorName(post.original)}</p>
+                {post.original.body && <p className="post-body">{post.original.body}</p>}
+                {post.original.media?.[0] && (
+                  post.original.media[0].kind === 'video'
+                    ? <video src={post.original.media[0].url} muted playsInline />
+                    : <img src={post.original.media[0].url} alt="" loading="lazy" />
+                )}
               </button>
             )}
 
             {post.media && post.media.length > 0 && (
               <button
                 type="button"
-                className={`media-grid count-${Math.min(post.media.length, 3)} media-grid-btn`}
+                className={`media-grid count-${Math.min(post.media.length, 4)} media-grid-btn`}
                 onClick={() => openPost(post.id)}
               >
-                {post.media.map((m) => (
-                  m.kind === 'video'
-                    ? <video key={m.id} src={m.url} muted playsInline />
-                    : <img key={m.id} src={m.url} alt="" loading="lazy" />
+                {post.media.slice(0, 4).map((m, index) => (
+                  <span className="media-tile" key={m.id}>
+                    {m.kind === 'video'
+                      ? <video src={m.url} muted playsInline />
+                      : <img src={m.url} alt="" loading="lazy" />}
+                    {index === 3 && post.media!.length > 4 && (
+                      <span className="media-more">+{post.media!.length - 4}</span>
+                    )}
+                  </span>
                 ))}
               </button>
             )}
@@ -345,18 +385,9 @@ export function FeedPage() {
               <button
                 type="button"
                 className="action"
-                onClick={async () => {
-                  const url = `${window.location.origin}/posts/${post.id}`
-                  try {
-                    if (navigator.share) await navigator.share({ title: 'Rotaract Social', url })
-                    else {
-                      await navigator.clipboard.writeText(url)
-                      alert('Lien copié')
-                    }
-                  } catch { /* cancelled */ }
-                }}
+                onClick={() => setSharePost(post)}
               >
-                Partager
+                Repartager
               </button>
             </footer>
           </article>
@@ -364,6 +395,13 @@ export function FeedPage() {
       </div>
 
       <SuggestionsPanel />
+      <SharePostModal
+        post={sharePost}
+        onClose={() => setSharePost(null)}
+        onRepost={(quoteBody) => {
+          if (sharePost) repost(sharePost, quoteBody)
+        }}
+      />
     </div>
   )
 }

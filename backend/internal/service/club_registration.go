@@ -92,6 +92,7 @@ type ApproveClubRegistrationResult struct {
 type CompleteClubRegistrationInput struct {
 	Token         string `json:"token"`
 	GoogleIDToken string `json:"google_id_token"`
+	Password      string `json:"password"`
 }
 
 type CompleteClubRegistrationResult struct {
@@ -280,6 +281,51 @@ func (s *ClubRegistrationService) PreviewAccess(ctx context.Context, token strin
 	}, nil
 }
 
+func (s *ClubRegistrationService) Complete(ctx context.Context, input CompleteClubRegistrationInput) (*CompleteClubRegistrationResult, error) {
+	if strings.TrimSpace(input.GoogleIDToken) != "" {
+		return s.CompleteWithGoogle(ctx, input)
+	}
+	if strings.TrimSpace(input.Password) != "" {
+		return s.CompleteWithPassword(ctx, input)
+	}
+	return nil, fmt.Errorf("google_id_token or password is required")
+}
+
+func (s *ClubRegistrationService) CompleteWithPassword(ctx context.Context, input CompleteClubRegistrationInput) (*CompleteClubRegistrationResult, error) {
+	req, err := s.loadValidAccessRequest(ctx, input.Token)
+	if err != nil {
+		return nil, err
+	}
+	if len(input.Password) < 8 {
+		return nil, ErrPasswordRequired
+	}
+
+	if _, err := s.users.GetByEmail(ctx, req.ContactEmail); err == nil {
+		return nil, ErrEmailAlreadyUsed
+	} else if !errors.Is(err, repository.ErrNotFound) {
+		return nil, err
+	}
+
+	club, reviewerID, err := s.createClubFromApprovedRequest(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+
+	president, err := s.admin.CreateClubHeadPassword(ctx, reviewerID, club.ID, CreatePresidentInput{
+		Email:     req.ContactEmail,
+		Password:  input.Password,
+		FirstName: req.ContactFirstName,
+		LastName:  req.ContactLastName,
+		Phone:     req.Phone,
+	})
+	if err != nil {
+		_ = s.admin.DeleteClub(ctx, club.ID)
+		return nil, err
+	}
+
+	return s.finalizeClubRegistration(ctx, req, club, president)
+}
+
 func (s *ClubRegistrationService) CompleteWithGoogle(ctx context.Context, input CompleteClubRegistrationInput) (*CompleteClubRegistrationResult, error) {
 	if s.googleClient == "" {
 		return nil, ErrGoogleAuthNotConfigured
@@ -310,39 +356,7 @@ func (s *ClubRegistrationService) CompleteWithGoogle(ctx context.Context, input 
 		return nil, err
 	}
 
-	if _, err := s.clubs.FindByName(ctx, req.ClubName); err == nil {
-		return nil, ErrClubNameTaken
-	} else if !errors.Is(err, repository.ErrNotFound) {
-		return nil, err
-	}
-
-	baseSlug := ""
-	if req.ApprovedSlug != nil {
-		baseSlug = strings.TrimSpace(*req.ApprovedSlug)
-	}
-	if baseSlug == "" {
-		baseSlug = slugify("", req.ClubName)
-	}
-	suffix, err := randomAlphaNum(4)
-	if err != nil {
-		return nil, err
-	}
-	slug := strings.Trim(baseSlug, "-") + "-" + strings.ToLower(suffix)
-
-	if req.ReviewedBy == nil {
-		return nil, fmt.Errorf("registration is missing reviewer")
-	}
-	reviewerID := *req.ReviewedBy
-
-	club, err := s.admin.CreateClub(ctx, reviewerID, CreateClubInput{
-		Name:        req.ClubName,
-		Slug:        slug,
-		Description: req.Description,
-		Country:     req.Country,
-		City:        req.City,
-		Commune:     req.Commune,
-		FoundedAt:   req.FoundedAt,
-	})
+	club, reviewerID, err := s.createClubFromApprovedRequest(ctx, req)
 	if err != nil {
 		return nil, err
 	}
@@ -368,6 +382,50 @@ func (s *ClubRegistrationService) CompleteWithGoogle(ctx context.Context, input 
 		return nil, err
 	}
 
+	return s.finalizeClubRegistration(ctx, req, club, president)
+}
+
+func (s *ClubRegistrationService) createClubFromApprovedRequest(ctx context.Context, req *domain.ClubRegistrationRequest) (*domain.Club, uuid.UUID, error) {
+	if _, err := s.clubs.FindByName(ctx, req.ClubName); err == nil {
+		return nil, uuid.Nil, ErrClubNameTaken
+	} else if !errors.Is(err, repository.ErrNotFound) {
+		return nil, uuid.Nil, err
+	}
+
+	baseSlug := ""
+	if req.ApprovedSlug != nil {
+		baseSlug = strings.TrimSpace(*req.ApprovedSlug)
+	}
+	if baseSlug == "" {
+		baseSlug = slugify("", req.ClubName)
+	}
+	suffix, err := randomAlphaNum(4)
+	if err != nil {
+		return nil, uuid.Nil, err
+	}
+	slug := strings.Trim(baseSlug, "-") + "-" + strings.ToLower(suffix)
+
+	if req.ReviewedBy == nil {
+		return nil, uuid.Nil, fmt.Errorf("registration is missing reviewer")
+	}
+	reviewerID := *req.ReviewedBy
+
+	club, err := s.admin.CreateClub(ctx, reviewerID, CreateClubInput{
+		Name:        req.ClubName,
+		Slug:        slug,
+		Description: req.Description,
+		Country:     req.Country,
+		City:        req.City,
+		Commune:     req.Commune,
+		FoundedAt:   req.FoundedAt,
+	})
+	if err != nil {
+		return nil, uuid.Nil, err
+	}
+	return club, reviewerID, nil
+}
+
+func (s *ClubRegistrationService) finalizeClubRegistration(ctx context.Context, req *domain.ClubRegistrationRequest, club *domain.Club, president *domain.User) (*CompleteClubRegistrationResult, error) {
 	if err := s.requests.MarkCompleted(ctx, req.ID, club.ID); err != nil {
 		return nil, err
 	}

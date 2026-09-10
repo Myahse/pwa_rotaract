@@ -24,6 +24,8 @@ var (
 	ErrPendingRequest      = errors.New("a pending access request already exists for this email")
 	ErrRequestNotPending   = errors.New("access request is not pending")
 	ErrClubNotMatched      = errors.New("club could not be matched, admin review required")
+	ErrPasswordRequired    = errors.New("password is required")
+	ErrAlreadyClubMember   = errors.New("already a member of this club")
 )
 
 type RegistrationService struct {
@@ -143,24 +145,21 @@ func (s *RegistrationService) SubmitAccessRequest(ctx context.Context, input Acc
 	if strings.TrimSpace(input.ClubName) == "" {
 		return nil, fmt.Errorf("club name is required")
 	}
-
-	if _, err := s.users.GetByEmail(ctx, strings.ToLower(strings.TrimSpace(input.Email))); err == nil {
-		return nil, ErrEmailAlreadyUsed
-	} else if !errors.Is(err, repository.ErrNotFound) {
-		return nil, err
+	if strings.TrimSpace(input.FirstName) == "" || strings.TrimSpace(input.LastName) == "" {
+		return nil, fmt.Errorf("first name and last name are required")
 	}
 
-	pending, err := s.requests.HasPendingByEmail(ctx, input.Email)
+	email := strings.ToLower(strings.TrimSpace(input.Email))
+	if email == "" || !strings.Contains(email, "@") {
+		return nil, fmt.Errorf("a valid email is required")
+	}
+
+	pending, err := s.requests.HasPendingByEmail(ctx, email)
 	if err != nil {
 		return nil, err
 	}
 	if pending {
 		return nil, ErrPendingRequest
-	}
-
-	hash, err := auth.HashPassword(input.Password)
-	if err != nil {
-		return nil, err
 	}
 
 	club, clubErr := s.clubs.FindByName(ctx, input.ClubName)
@@ -176,20 +175,46 @@ func (s *RegistrationService) SubmitAccessRequest(ctx context.Context, input Acc
 		return nil, clubErr
 	}
 
+	var existingUserID *uuid.UUID
+	passwordHash := ""
+	existing, userErr := s.users.GetByEmail(ctx, email)
+	if userErr == nil {
+		existingUserID = &existing.ID
+		if clubID != nil {
+			if _, err := s.clubs.GetMembership(ctx, *clubID, existing.ID); err == nil {
+				return nil, ErrAlreadyClubMember
+			} else if !errors.Is(err, repository.ErrNotFound) {
+				return nil, err
+			}
+		}
+	} else if errors.Is(userErr, repository.ErrNotFound) {
+		if len(input.Password) < 8 {
+			return nil, ErrPasswordRequired
+		}
+		hash, err := auth.HashPassword(input.Password)
+		if err != nil {
+			return nil, err
+		}
+		passwordHash = hash
+	} else {
+		return nil, userErr
+	}
+
 	req := &domain.AccessRequest{
 		ClubID:          clubID,
 		ClubName:        strings.TrimSpace(input.ClubName),
 		RequestedRoleID: input.RoleID,
-		Email:           strings.ToLower(strings.TrimSpace(input.Email)),
+		Email:           email,
 		FirstName:       strings.TrimSpace(input.FirstName),
 		LastName:        strings.TrimSpace(input.LastName),
 		Phone:           input.Phone,
 		BirthDate:       input.BirthDate,
 		Profession:      input.Profession,
 		MemberSince:     input.MemberSince,
+		ExistingUserID:  existingUserID,
 	}
 
-	if err := s.requests.Create(ctx, req, hash); err != nil {
+	if err := s.requests.Create(ctx, req, passwordHash); err != nil {
 		return nil, err
 	}
 
@@ -215,43 +240,57 @@ func (s *RegistrationService) ApproveAccessRequest(ctx context.Context, reviewer
 
 	roleID := req.RequestedRoleID
 	if roleID == nil {
-		if input.RoleID == nil {
-			return nil, fmt.Errorf("role_id is required to approve this request")
+		if input.RoleID != nil {
+			roleID = input.RoleID
+		} else {
+			defaultRole, err := s.defaultJoinableRole(ctx, *targetClubID)
+			if err != nil {
+				return nil, err
+			}
+			roleID = &defaultRole.ID
 		}
-		roleID = input.RoleID
 	}
 
 	if _, err := s.clubs.GetRoleByID(ctx, *targetClubID, *roleID); err != nil {
 		return nil, err
 	}
 
-	if _, err := s.users.GetByEmail(ctx, req.Email); err == nil {
-		return nil, ErrEmailAlreadyUsed
+	var user *domain.User
+	if req.ExistingUserID != nil {
+		user, err = s.users.GetByID(ctx, *req.ExistingUserID)
+		if err != nil {
+			return nil, err
+		}
+	} else if existing, err := s.users.GetByEmail(ctx, req.Email); err == nil {
+		user = existing
 	} else if !errors.Is(err, repository.ErrNotFound) {
 		return nil, err
+	} else {
+		passwordHash, err := s.requests.GetPasswordHash(ctx, requestID)
+		if err != nil {
+			return nil, err
+		}
+		user = &domain.User{
+			Email:        req.Email,
+			PasswordHash: passwordHash,
+			FirstName:    req.FirstName,
+			LastName:     req.LastName,
+			Phone:        req.Phone,
+			BirthDate:    req.BirthDate,
+			Profession:   req.Profession,
+			MemberSince:  req.MemberSince,
+			IsActive:     true,
+		}
+		if err := s.users.Create(ctx, user); err != nil {
+			return nil, err
+		}
 	}
 
-	passwordHash, err := s.requests.GetPasswordHash(ctx, requestID)
-	if err != nil {
-		return nil, err
-	}
-
-	user := &domain.User{
-		Email:        req.Email,
-		PasswordHash: passwordHash,
-		FirstName:    req.FirstName,
-		LastName:     req.LastName,
-		Phone:        req.Phone,
-		BirthDate:    req.BirthDate,
-		Profession:   req.Profession,
-		MemberSince:  req.MemberSince,
-		IsActive:     true,
-	}
-	if err := s.users.Create(ctx, user); err != nil {
-		return nil, err
-	}
-
-	if err := s.joinClub(ctx, *targetClubID, user, *roleID, &reviewerID); err != nil {
+	if _, err := s.clubs.GetMembership(ctx, *targetClubID, user.ID); errors.Is(err, repository.ErrNotFound) {
+		if err := s.joinClub(ctx, *targetClubID, user, *roleID, &reviewerID); err != nil {
+			return nil, err
+		}
+	} else if err != nil {
 		return nil, err
 	}
 
@@ -261,6 +300,22 @@ func (s *RegistrationService) ApproveAccessRequest(ctx context.Context, reviewer
 
 	user.PasswordHash = ""
 	return user, nil
+}
+
+func (s *RegistrationService) defaultJoinableRole(ctx context.Context, clubID uuid.UUID) (*domain.ClubRole, error) {
+	roles, err := s.clubs.ListJoinableRoles(ctx, clubID)
+	if err != nil {
+		return nil, err
+	}
+	if len(roles) == 0 {
+		return nil, fmt.Errorf("no joinable role for this club")
+	}
+	for i := range roles {
+		if strings.EqualFold(roles[i].Name, "Membre") || strings.EqualFold(roles[i].Name, "Member") {
+			return &roles[i], nil
+		}
+	}
+	return &roles[0], nil
 }
 
 func (s *RegistrationService) RejectAccessRequest(ctx context.Context, reviewerID, requestID uuid.UUID, note *string) error {

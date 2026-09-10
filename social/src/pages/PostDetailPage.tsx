@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
+import { ChevronLeft, ChevronRight, Repeat2 } from 'lucide-react'
 import { apiRequest } from '../api/client'
 import type { SocialComment, SocialPost } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
 import { getToken } from '../auth/storage'
 import { ShareCommentModal } from '../components/ShareCommentModal'
+import { SharePostModal } from '../components/SharePostModal'
 import { SkeletonFeed, SkeletonList } from '../components/Skeleton'
 
 function authorName(p: { author?: { first_name: string; last_name: string } }) {
@@ -35,14 +37,17 @@ export function PostDetailPage() {
   const [replyTo, setReplyTo] = useState<string | null>(null)
   const [replyName, setReplyName] = useState('')
   const [shareComment, setShareComment] = useState<SocialComment | null>(null)
+  const [sharePost, setSharePost] = useState<SocialPost | null>(null)
   const [error, setError] = useState('')
   const [postReady, setPostReady] = useState(false)
   const [commentsReady, setCommentsReady] = useState(false)
   const [sending, setSending] = useState(false)
+  const [activeMediaIndex, setActiveMediaIndex] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
   const rightRef = useRef<HTMLElement>(null)
   const focusedOnce = useRef(false)
   const lastPostID = useRef<string | undefined>(undefined)
+  const touchStartX = useRef<number | null>(null)
 
   // Reset only when navigating to a different post
   useEffect(() => {
@@ -53,6 +58,7 @@ export function PostDetailPage() {
       setPostReady(false)
       setCommentsReady(false)
       setError('')
+      setActiveMediaIndex(0)
       focusedOnce.current = false
     }
   }, [postID])
@@ -123,6 +129,21 @@ export function PostDetailPage() {
         setPost(prev)
       }
     }, 'Connectez-vous pour aimer une publication')
+  }
+
+  function repost(quoteBody: string) {
+    if (!post) return
+    requireAuth(async () => {
+      try {
+        await apiRequest(`/social/posts/${post.id}/repost`, {
+          method: 'POST',
+          body: JSON.stringify({ quote_body: quoteBody }),
+        }, getToken())
+        alert('Publication repartagée')
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Repartage impossible')
+      }
+    }, 'Connectez-vous pour repartager une publication')
   }
 
   function startReply(c: SocialComment) {
@@ -275,8 +296,27 @@ export function PostDetailPage() {
     )
   }
 
-  const hasMedia = Boolean(post.media && post.media.length > 0)
+  const displayPost = post.original ?? post
+  const hasMedia = Boolean(displayPost.media && displayPost.media.length > 0)
+  const media = displayPost.media ?? []
   const showCommentsSkeleton = !commentsReady && comments.length === 0
+
+  function moveMedia(direction: -1 | 1) {
+    setActiveMediaIndex((current) => (current + direction + media.length) % media.length)
+  }
+
+  function handleMediaPointerDown(event: React.PointerEvent<HTMLDivElement>) {
+    if (event.pointerType === 'mouse' && event.button !== 0) return
+    touchStartX.current = event.clientX
+  }
+
+  function handleMediaPointerUp(event: React.PointerEvent<HTMLDivElement>) {
+    if (touchStartX.current === null || media.length < 2) return
+    const distance = event.clientX - touchStartX.current
+    touchStartX.current = null
+    if (Math.abs(distance) < 48) return
+    moveMedia(distance < 0 ? 1 : -1)
+  }
 
   return (
     <>
@@ -288,16 +328,55 @@ export function PostDetailPage() {
 
           <div className="post-detail-stage">
             {hasMedia ? (
-              <div className={`post-detail-media count-${Math.min(post.media!.length, 3)}`}>
-                {post.media!.map((m) => (
-                  m.kind === 'video'
-                    ? <video key={m.id} src={m.url} controls playsInline />
-                    : <img key={m.id} src={m.url} alt="" />
-                ))}
+              <div
+                className="post-detail-media"
+                onPointerDown={handleMediaPointerDown}
+                onPointerUp={handleMediaPointerUp}
+              >
+                <div className="post-detail-slide">
+                  {media[activeMediaIndex].kind === 'video'
+                    ? <video src={media[activeMediaIndex].url} controls playsInline />
+                    : <img src={media[activeMediaIndex].url} alt={`Image ${activeMediaIndex + 1} sur ${media.length}`} />}
+                </div>
+                {media.length > 1 && (
+                  <>
+                    <button
+                      type="button"
+                      className="media-nav media-nav-prev"
+                      onClick={() => moveMedia(-1)}
+                      aria-label="Média précédent"
+                    >
+                      <ChevronLeft size={20} aria-hidden="true" />
+                    </button>
+                    <button
+                      type="button"
+                      className="media-nav media-nav-next"
+                      onClick={() => moveMedia(1)}
+                      aria-label="Média suivant"
+                    >
+                      <ChevronRight size={20} aria-hidden="true" />
+                    </button>
+                    <div className="media-dots" aria-label="Sélectionner un média">
+                      {media.map((item, index) => (
+                        <button
+                          key={item.id}
+                          type="button"
+                          className={index === activeMediaIndex ? 'active' : ''}
+                          onClick={() => setActiveMediaIndex(index)}
+                          aria-label={`Afficher le média ${index + 1}`}
+                          aria-current={index === activeMediaIndex ? 'true' : undefined}
+                        />
+                      ))}
+                    </div>
+                  </>
+                )}
               </div>
             ) : (
               <div className="post-detail-text-only">
-                <p className="post-body xl">{post.body}</p>
+                {post.reposted_post_id && <p className="repost-label"><Repeat2 size={14} aria-hidden="true" /> Repartagé</p>}
+                {post.quote_body && <p className="post-body xl">{post.quote_body}</p>}
+                {post.original && <p className="post-body xl original-detail-text">{post.original.body}</p>}
+                {!post.original && <p className="post-body xl">{post.body}</p>}
               </div>
             )}
           </div>
@@ -315,21 +394,8 @@ export function PostDetailPage() {
               >
                 J&apos;aime
               </button>
-              <button
-                type="button"
-                className="action"
-                onClick={async () => {
-                  const url = `${window.location.origin}/posts/${post.id}`
-                  try {
-                    if (navigator.share) await navigator.share({ title: 'Rotaract Social', url })
-                    else {
-                      await navigator.clipboard.writeText(url)
-                      alert('Lien copié')
-                    }
-                  } catch { /* cancelled */ }
-                }}
-              >
-                Partager
+              <button type="button" className="action" onClick={() => setSharePost(post)}>
+                Repartager
               </button>
             </footer>
           </div>
@@ -355,9 +421,10 @@ export function PostDetailPage() {
             </div>
           </header>
 
-          {hasMedia && post.body && (
-            <p className="post-detail-caption">{post.body}</p>
+          {(post.quote_body || (!post.original && post.body)) && (
+            <p className="post-detail-caption">{post.quote_body || post.body}</p>
           )}
+          {post.reposted_post_id && <p className="repost-label"><Repeat2 size={14} aria-hidden="true" /> Repartagé avec la publication originale ci-dessus</p>}
 
           <div className="post-detail-comments-head">
             <h2>Discussion</h2>
@@ -409,6 +476,11 @@ export function PostDetailPage() {
       </div>
 
       <ShareCommentModal comment={shareComment} onClose={() => setShareComment(null)} />
+      <SharePostModal
+        post={sharePost}
+        onClose={() => setSharePost(null)}
+        onRepost={(quoteBody) => repost(quoteBody)}
+      />
     </>
   )
 }

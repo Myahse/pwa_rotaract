@@ -1,4 +1,5 @@
 import { Link, Outlet, useLocation } from 'react-router-dom'
+import { Building2, House, UserCircle } from 'lucide-react'
 import { useAuth } from '../auth/AuthContext'
 
 export function AppLayout() {
@@ -11,9 +12,11 @@ export function AppLayout() {
     <div className="app-shell">
       <header className="app-header">
         <div className="brand">
-          <span className="brand-dot" aria-hidden />
+          <picture>
+            <source srcSet="/logo-white.png" media="(prefers-color-scheme: dark)" />
+            <img className="brand-logo" src="/logo.png" alt="Rotaract IUGB Club" />
+          </picture>
           <div>
-            <strong>Rotaract CIV</strong>
             {activeClub?.club && <p>{activeClub.club.name}</p>}
           </div>
         </div>
@@ -39,13 +42,20 @@ export function AppLayout() {
       </header>
 
       <nav className="bottom-nav">
-        <Link to="/home" className={location.pathname === '/home' ? 'active' : ''}>Accueil</Link>
+        <Link to="/home" className={location.pathname === '/home' ? 'active' : ''}>
+          <House className="nav-icon" aria-hidden="true" />
+          <span>Accueil</span>
+        </Link>
         {activeClubId && (
           <Link to={`/clubs/${activeClubId}`} className={location.pathname.includes('/clubs/') ? 'active' : ''}>
-            Club
+            <Building2 className="nav-icon" aria-hidden="true" />
+            <span>Club</span>
           </Link>
         )}
-        <Link to="/profile" className={location.pathname === '/profile' ? 'active' : ''}>Profil</Link>
+        <Link to="/profile" className={location.pathname === '/profile' ? 'active' : ''}>
+          <UserCircle className="nav-icon" aria-hidden="true" />
+          <span>Profil</span>
+        </Link>
       </nav>
       <main className="app-main">
         <Outlet />

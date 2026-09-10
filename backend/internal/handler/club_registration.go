@@ -187,16 +187,20 @@ func (h *ClubRegistrationHandler) PreviewAccess(w http.ResponseWriter, r *http.R
 	WriteJSON(w, http.StatusOK, preview)
 }
 
-func (h *ClubRegistrationHandler) CompleteWithGoogle(w http.ResponseWriter, r *http.Request) {
+func (h *ClubRegistrationHandler) Complete(w http.ResponseWriter, r *http.Request) {
 	var input service.CompleteClubRegistrationInput
 	if err := DecodeJSON(r, &input); err != nil {
 		WriteError(w, http.StatusBadRequest, "invalid request body")
 		return
 	}
 
-	result, err := h.registrations.CompleteWithGoogle(r.Context(), input)
+	result, err := h.registrations.Complete(r.Context(), input)
 	if errors.Is(err, service.ErrGoogleAuthNotConfigured) {
 		WriteError(w, http.StatusServiceUnavailable, err.Error())
+		return
+	}
+	if errors.Is(err, service.ErrPasswordRequired) {
+		WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 	if errors.Is(err, service.ErrInvalidClubAccessToken) {

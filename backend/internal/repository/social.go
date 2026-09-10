@@ -38,6 +38,27 @@ func (r *SocialRepository) CreatePost(ctx context.Context, post *domain.SocialPo
 	`, post.AuthorID, post.ClubID, post.Body).Scan(&post.ID, &post.CreatedAt, &post.UpdatedAt, &post.IsHidden)
 }
 
+func (r *SocialRepository) CreateRepost(ctx context.Context, authorID, sourceID uuid.UUID, quoteBody string) (*domain.SocialPost, error) {
+	var post domain.SocialPost
+	err := r.pool.QueryRow(ctx, `
+		INSERT INTO social_posts (author_id, body, reposted_post_id, quote_body)
+		SELECT $1, '', p.id, $3
+		FROM social_posts p
+		WHERE p.id = $2 AND p.is_hidden = FALSE
+		RETURNING id, author_id, club_id, body, reposted_post_id, quote_body, created_at, updated_at, is_hidden
+	`, authorID, sourceID, quoteBody).Scan(
+		&post.ID, &post.AuthorID, &post.ClubID, &post.Body, &post.RepostedPostID, &post.QuoteBody,
+		&post.CreatedAt, &post.UpdatedAt, &post.IsHidden,
+	)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, ErrNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &post, nil
+}
+
 func (r *SocialRepository) AddMedia(ctx context.Context, media *domain.SocialPostMedia) error {
 	return r.pool.QueryRow(ctx, `
 		INSERT INTO social_post_media (post_id, kind, path, sort_order)
@@ -406,7 +427,7 @@ func scanFollowProfiles(rows pgx.Rows, withFriendship bool) ([]domain.SocialFoll
 // socialPostSelectFast aggregates counts only for the selected posts ($2 = uuid[]).
 // $1 is always the viewer id for reacted/followed flags.
 const socialPostSelectFast = `
-	SELECT p.id, p.author_id, p.club_id, p.body, p.is_hidden, p.created_at, p.updated_at,
+	SELECT p.id, p.author_id, p.club_id, p.body, p.reposted_post_id, p.quote_body, p.is_hidden, p.created_at, p.updated_at,
 	       u.first_name, u.last_name, u.avatar_path,
 	       c.name AS club_name,
 	       COALESCE(cc.cnt, 0) AS comment_count,
@@ -436,7 +457,7 @@ func scanSocialPostRow(row pgx.Row) (*SocialPostRow, error) {
 	var avatar *string
 	var clubName *string
 	err := row.Scan(
-		&item.Post.ID, &item.Post.AuthorID, &item.Post.ClubID, &item.Post.Body, &item.Post.IsHidden,
+		&item.Post.ID, &item.Post.AuthorID, &item.Post.ClubID, &item.Post.Body, &item.Post.RepostedPostID, &item.Post.QuoteBody, &item.Post.IsHidden,
 		&item.Post.CreatedAt, &item.Post.UpdatedAt,
 		&first, &last, &avatar, &clubName,
 		&item.CommentCount, &item.ReactionCount, &item.ReactedByMe, &item.AuthorFollowedByMe,
@@ -457,7 +478,7 @@ func scanSocialPostRows(rows pgx.Rows) (*SocialPostRow, error) {
 	var avatar *string
 	var clubName *string
 	err := rows.Scan(
-		&item.Post.ID, &item.Post.AuthorID, &item.Post.ClubID, &item.Post.Body, &item.Post.IsHidden,
+		&item.Post.ID, &item.Post.AuthorID, &item.Post.ClubID, &item.Post.Body, &item.Post.RepostedPostID, &item.Post.QuoteBody, &item.Post.IsHidden,
 		&item.Post.CreatedAt, &item.Post.UpdatedAt,
 		&first, &last, &avatar, &clubName,
 		&item.CommentCount, &item.ReactionCount, &item.ReactedByMe, &item.AuthorFollowedByMe,

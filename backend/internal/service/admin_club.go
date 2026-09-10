@@ -183,6 +183,27 @@ type CreateGoogleHeadInput struct {
 	Phone     *string
 }
 
+func (s *AdminService) CreateClubHeadPassword(ctx context.Context, adminID, clubID uuid.UUID, input CreatePresidentInput) (*domain.User, error) {
+	if _, err := s.clubs.GetByID(ctx, clubID); err != nil {
+		return nil, err
+	}
+	if strings.TrimSpace(input.Email) == "" {
+		return nil, fmt.Errorf("email is required")
+	}
+	if strings.TrimSpace(input.Password) == "" {
+		return nil, fmt.Errorf("password is required")
+	}
+	if strings.TrimSpace(input.FirstName) == "" || strings.TrimSpace(input.LastName) == "" {
+		return nil, fmt.Errorf("first and last name are required")
+	}
+
+	president, err := s.createPresidentUser(ctx, adminID, clubID, input)
+	if err != nil {
+		return nil, err
+	}
+	return s.profiles.PublicUser(president), nil
+}
+
 func (s *AdminService) CreateClubHeadGoogle(ctx context.Context, adminID, clubID uuid.UUID, input CreateGoogleHeadInput) (*domain.User, error) {
 	if _, err := s.clubs.GetByID(ctx, clubID); err != nil {
 		return nil, err

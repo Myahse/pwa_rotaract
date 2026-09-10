@@ -172,6 +172,8 @@ type AccessRequest struct {
 	BirthDate       *time.Time          `json:"birth_date,omitempty"`
 	Profession      *string             `json:"profession,omitempty"`
 	MemberSince     *time.Time          `json:"member_since,omitempty"`
+	ExistingUserID  *uuid.UUID          `json:"existing_user_id,omitempty"`
+	KnownMember     bool                `json:"known_member"`
 	Status          AccessRequestStatus `json:"status"`
 	ReviewedBy      *uuid.UUID          `json:"reviewed_by,omitempty"`
 	ReviewNote      *string             `json:"review_note,omitempty"`
@@ -439,6 +441,8 @@ type SocialPost struct {
 	ID            uuid.UUID         `json:"id"`
 	AuthorID      uuid.UUID         `json:"author_id"`
 	ClubID        *uuid.UUID        `json:"club_id,omitempty"`
+	RepostedPostID *uuid.UUID       `json:"reposted_post_id,omitempty"`
+	QuoteBody     string            `json:"quote_body,omitempty"`
 	Body          string            `json:"body"`
 	IsHidden      bool              `json:"is_hidden,omitempty"`
 	CreatedAt     time.Time         `json:"created_at"`
@@ -450,6 +454,7 @@ type SocialPost struct {
 	ReactionCount int               `json:"reaction_count"`
 	ReactedByMe   bool              `json:"reacted_by_me"`
 	AuthorFollowedByMe bool         `json:"author_followed_by_me"`
+	Original      *SocialPost      `json:"original,omitempty"`
 }
 
 type SocialComment struct {
@@ -590,4 +595,83 @@ type SocialGroupMessage struct {
 	Body      string        `json:"body"`
 	CreatedAt time.Time     `json:"created_at"`
 	Sender    *SocialAuthor `json:"sender,omitempty"`
+}
+
+type DonationStatus string
+
+const (
+	DonationStatusPending  DonationStatus = "pending"
+	DonationStatusReceived DonationStatus = "received"
+)
+
+type Donation struct {
+	ID          uuid.UUID      `json:"id"`
+	UserID      *uuid.UUID     `json:"user_id,omitempty"`
+	Name        string         `json:"name"`
+	Email       string         `json:"email"`
+	AmountXOF   int            `json:"amount_xof"`
+	Status      DonationStatus `json:"status"`
+	KnownMember bool           `json:"known_member"`
+	ReceiptPath string         `json:"-"`
+	ReceiptMime string         `json:"receipt_mime,omitempty"`
+	ReceiptURL  *string        `json:"receipt_url,omitempty"`
+	CreatedAt   time.Time      `json:"created_at"`
+}
+
+type PublicEventImage struct {
+	ID  uuid.UUID `json:"id"`
+	URL string    `json:"url"`
+}
+
+type PublicEvent struct {
+	ID          uuid.UUID          `json:"id"`
+	Published   bool               `json:"published"`
+	StartsAt    time.Time          `json:"starts_at"`
+	City        string             `json:"city"`
+	VenueFr     string             `json:"venue_fr"`
+	VenueEn     string             `json:"venue_en"`
+	TitleFr     string             `json:"title_fr"`
+	TitleEn     string             `json:"title_en"`
+	SummaryFr   string             `json:"summary_fr"`
+	SummaryEn   string             `json:"summary_en"`
+	BodyFr      string             `json:"body_fr"`
+	BodyEn      string             `json:"body_en"`
+	CtaLabelFr  string             `json:"cta_label_fr"`
+	CtaLabelEn  string             `json:"cta_label_en"`
+	CtaURL      string             `json:"cta_url"`
+	FlyerPath   *string            `json:"-"`
+	FlyerURL    *string            `json:"flyer_url,omitempty"`
+	Images      []PublicEventImage `json:"images"`
+	Status      string             `json:"status"`
+	CreatedAt   time.Time          `json:"created_at"`
+	UpdatedAt   time.Time          `json:"updated_at"`
+}
+
+type SiteGalleryImage struct {
+	ID        uuid.UUID `json:"id"`
+	Published bool      `json:"published"`
+	CaptionFr string    `json:"caption_fr"`
+	CaptionEn string    `json:"caption_en"`
+	Path      string    `json:"-"`
+	URL       string    `json:"url,omitempty"`
+	SortOrder int       `json:"sort_order"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+type FeaturedPostulant struct {
+	ID           uuid.UUID `json:"id"`
+	PeriodYear   int       `json:"period_year"`
+	PeriodMonth  int       `json:"period_month"`
+	Published    bool      `json:"published"`
+	FirstName    string    `json:"first_name"`
+	LastName     string    `json:"last_name"`
+	HomeClub     string    `json:"home_club"`
+	QuoteFr      string    `json:"quote_fr"`
+	QuoteEn      string    `json:"quote_en"`
+	VisitCount   int       `json:"visit_count"`
+	ClubsVisited []string  `json:"clubs_visited"`
+	FlyerPath    *string   `json:"-"`
+	FlyerURL     *string   `json:"flyer_url,omitempty"`
+	UpdatedAt    time.Time `json:"updated_at"`
 }

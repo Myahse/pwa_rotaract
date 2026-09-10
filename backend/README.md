@@ -28,6 +28,23 @@ When enabling: uncomment the Google routes in `server.go`, `/register-club` in t
 Authorized JavaScript origins must include the PWA origin (e.g. `http://localhost:5173`).  
 Without SMTP, the finish link is logged to the API console.
 
+## Public events (website)
+
+Published events drive the public site (`website/` `/events` and `/events/:id`). Flyers and gallery images are uploaded from Admin.
+
+| Method | Path | Auth |
+|--------|------|------|
+| GET | `/api/v1/events` | Public (published only) |
+| GET | `/api/v1/events/{eventID}` | Public (published only) |
+| GET | `/api/v1/admin/events` | Admin |
+| POST | `/api/v1/admin/events` | Admin |
+| GET | `/api/v1/admin/events/{eventID}` | Admin |
+| PATCH | `/api/v1/admin/events/{eventID}` | Admin |
+| DELETE | `/api/v1/admin/events/{eventID}` | Admin |
+| POST | `/api/v1/admin/events/{eventID}/flyer` | Admin (`multipart`, field `file`) |
+| POST | `/api/v1/admin/events/{eventID}/images` | Admin (`multipart`, field `file`) |
+| DELETE | `/api/v1/admin/events/{eventID}/images/{imageID}` | Admin |
+
 ## Member onboarding (email invite — primary flow)
 
 ```text
@@ -75,6 +92,17 @@ Configure SMTP for production email delivery. In dev, if `SMTP_HOST` is empty, i
 Only change `DATABASE_URL` in `.env` when switching — no code changes needed.
 
 ## Profile (authenticated user)
+
+## Import Tombola members
+
+The Tombola database is separate. Set `TOMBOLA_DATABASE_URL` temporarily, then run:
+
+```bash
+go run ./cmd/import-tombola -dry-run
+go run ./cmd/import-tombola
+```
+
+The import matches existing clubs by name and is safe to run again. Existing emails are not overwritten. Tombola passwords use a different hash format, so imported members must use the password-reset email before logging in.
 
 | Method | Path | Description |
 |--------|------|-------------|

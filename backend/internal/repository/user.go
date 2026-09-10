@@ -144,6 +144,11 @@ func (r *UserRepository) UpdateAvatarPath(ctx context.Context, userID uuid.UUID,
 	return r.scanUser(r.pool.QueryRow(ctx, query, userID, avatarPath))
 }
 
+func (r *UserRepository) UpdatePasswordHash(ctx context.Context, userID uuid.UUID, passwordHash string) error {
+	_, err := r.pool.Exec(ctx, `UPDATE users SET password_hash = $2, updated_at = NOW() WHERE id = $1`, userID, passwordHash)
+	return err
+}
+
 func (r *UserRepository) CountAdmins(ctx context.Context) (int, error) {
 	var count int
 	err := r.pool.QueryRow(ctx, `SELECT COUNT(*) FROM users WHERE is_admin = TRUE`).Scan(&count)

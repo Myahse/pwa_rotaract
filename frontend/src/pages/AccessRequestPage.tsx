@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
+import { Eye, EyeOff } from 'lucide-react'
 import { apiRequest } from '../api/client'
 
 export function AccessRequestPage() {
@@ -14,6 +15,7 @@ export function AccessRequestPage() {
   const [error, setError] = useState('')
   const [done, setDone] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault()
@@ -54,7 +56,20 @@ export function AccessRequestPage() {
           <label>Prénom<input value={form.first_name} onChange={(e) => setForm({ ...form, first_name: e.target.value })} required /></label>
           <label>Nom<input value={form.last_name} onChange={(e) => setForm({ ...form, last_name: e.target.value })} required /></label>
           <label>Email<input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required /></label>
-          <label>Mot de passe<input type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required minLength={8} /></label>
+          <label>Mot de passe
+            <div className="password-field">
+              <input type={showPassword ? 'text' : 'password'} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required minLength={8} autoComplete="new-password" />
+              <button
+                type="button"
+                className="password-toggle icon-button"
+                onClick={() => setShowPassword((value) => !value)}
+                aria-label={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
+                title={showPassword ? 'Masquer le mot de passe' : 'Afficher le mot de passe'}
+              >
+                {showPassword ? <EyeOff size={18} aria-hidden="true" /> : <Eye size={18} aria-hidden="true" />}
+              </button>
+            </div>
+          </label>
           <label>Nom du club<input value={form.club_name} onChange={(e) => setForm({ ...form, club_name: e.target.value })} required /></label>
           <label>Profession<input value={form.profession} onChange={(e) => setForm({ ...form, profession: e.target.value })} /></label>
           {error && <p className="error">{error}</p>}

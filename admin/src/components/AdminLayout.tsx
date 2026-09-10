@@ -1,12 +1,15 @@
 import { Link, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
-import { IconAccess, IconClubs, IconDashboard, IconRegister } from './Icons'
+import { IconAccess, IconCalendar, IconClubs, IconDashboard, IconDonate, IconRegister, IconWebsite } from './Icons'
 
 const nav = [
   { to: '/dashboard', label: 'Accueil', short: 'Accueil', icon: IconDashboard, match: (p: string) => p === '/dashboard' || p === '/' },
   { to: '/clubs', label: 'Clubs', short: 'Clubs', icon: IconClubs, match: (p: string) => p.startsWith('/clubs') },
+  { to: '/events', label: 'Événements', short: 'Agenda', icon: IconCalendar, match: (p: string) => p.startsWith('/events') },
+  { to: '/website-home', label: 'Accueil site', short: 'Site', icon: IconWebsite, match: (p: string) => p.startsWith('/website-home') },
   { to: '/access-requests', label: "Demandes d'accès", short: 'Accès', icon: IconAccess, match: (p: string) => p.startsWith('/access-requests') },
-  { to: '/club-registrations', label: 'Nouveaux clubs', short: 'Inscriptions', icon: IconRegister, match: (p: string) => p.startsWith('/club-registrations') },
+  { to: '/donations', label: 'Dons', short: 'Dons', icon: IconDonate, match: (p: string) => p.startsWith('/donations') },
+  { to: '/club-registrations', label: 'Nouveaux clubs', short: 'Clubs+', icon: IconRegister, match: (p: string) => p.startsWith('/club-registrations') },
 ]
 
 export function AdminLayout() {

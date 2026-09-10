@@ -65,10 +65,14 @@ func (s *Server) buildRouter() (chi.Router, *scheduler.BirthdayScheduler, error)
 	requestRepo := repository.NewAccessRequestRepository(s.store.Pool)
 	clubRegistrationRepo := repository.NewClubRegistrationRepository(s.store.Pool)
 	emailInviteRepo := repository.NewEmailInviteRepository(s.store.Pool)
+	passwordResetRepo := repository.NewPasswordResetRepository(s.store.Pool)
 	diaryRepo := repository.NewDiaryRepository(s.store.Pool)
 	mandateRepo := repository.NewMandateRepository(s.store.Pool)
 	pushSubRepo := repository.NewPushSubscriptionRepository(s.store.Pool)
 	birthdayRepo := repository.NewBirthdayRepository(s.store.Pool)
+	donationRepo := repository.NewDonationRepository(s.store.Pool)
+	eventRepo := repository.NewPublicEventRepository(s.store.Pool)
+	siteContentRepo := repository.NewSiteContentRepository(s.store.Pool)
 	socialRepo := repository.NewSocialRepository(s.store.Pool)
 
 	pushSender := push.NewSender(push.VAPIDConfig{
@@ -79,13 +83,16 @@ func (s *Server) buildRouter() (chi.Router, *scheduler.BirthdayScheduler, error)
 
 	tokenManager := auth.NewTokenManager(s.cfg.JWTSecret, s.cfg.JWTAccessTTL)
 	mailer := email.NewClient(email.Config{
-		Enabled:  s.cfg.SMTP.Enabled,
-		Host:     s.cfg.SMTP.Host,
-		Port:     s.cfg.SMTP.Port,
-		Username: s.cfg.SMTP.Username,
-		Password: s.cfg.SMTP.Password,
-		From:     s.cfg.SMTP.From,
-		FromName: s.cfg.SMTP.FromName,
+		Enabled:          s.cfg.SMTP.Enabled || s.cfg.Brevo.APIKey != "",
+		Host:             s.cfg.SMTP.Host,
+		Port:             s.cfg.SMTP.Port,
+		Username:         s.cfg.SMTP.Username,
+		Password:         s.cfg.SMTP.Password,
+		From:             s.cfg.SMTP.From,
+		FromName:         s.cfg.SMTP.FromName,
+		BrevoAPIKey:      s.cfg.Brevo.APIKey,
+		BrevoSenderEmail: s.cfg.Brevo.SenderEmail,
+		BrevoSenderName:  s.cfg.Brevo.SenderName,
 	}, s.logger)
 
 	chatHub := ws.NewHub(s.logger)
@@ -103,6 +110,10 @@ func (s *Server) buildRouter() (chi.Router, *scheduler.BirthdayScheduler, error)
 		clubRegistrationRepo, userRepo, clubRepo, adminService, mailer, tokenManager,
 		s.cfg.AppPublicURL, s.cfg.InviteTTL, s.cfg.GoogleClientID,
 	)
+	passwordResetService := service.NewPasswordResetService(userRepo, passwordResetRepo, mailer, s.cfg.AppPublicURL, s.cfg.PasswordResetTTL)
+	donationService := service.NewDonationService(donationRepo, userRepo, fileStore, s.cfg.APIPublicURL)
+	eventService := service.NewPublicEventService(eventRepo, fileStore, s.cfg.APIPublicURL, s.cfg.MaxAvatarSize)
+	siteContentService := service.NewSiteContentService(siteContentRepo, fileStore, s.cfg.APIPublicURL, s.cfg.MaxAvatarSize)
 	birthdayService, err := service.NewBirthdayService(
 		birthdayRepo, pushSubRepo, profileService, pushSender,
 		s.cfg.BirthdayTimezone, s.cfg.BirthdayNotifyHour, s.cfg.AppPublicURL, s.logger,
@@ -113,6 +124,10 @@ func (s *Server) buildRouter() (chi.Router, *scheduler.BirthdayScheduler, error)
 	birthdayScheduler := scheduler.NewBirthdayScheduler(birthdayService, s.logger)
 
 	authHandler := handler.NewAuthHandler(authService)
+	passwordResetHandler := handler.NewPasswordResetHandler(passwordResetService)
+	donationHandler := handler.NewDonationHandler(donationService)
+	eventHandler := handler.NewPublicEventHandler(eventService)
+	siteContentHandler := handler.NewSiteContentHandler(siteContentService)
 	adminHandler := handler.NewAdminHandler(adminService)
 	clubHandler := handler.NewClubHandler(clubService, clubRepo, profileService)
 	chatHandler := handler.NewChatHandler(chatService, chatRepo, clubRepo)
@@ -152,15 +167,21 @@ func (s *Server) buildRouter() (chi.Router, *scheduler.BirthdayScheduler, error)
 		api.Get("/status", healthHandler.Status)
 
 		api.Post("/auth/login", authHandler.Login)
+		api.Post("/auth/forgot-password", passwordResetHandler.Request)
+		api.Post("/auth/reset-password", passwordResetHandler.Complete)
 		api.Get("/invite/token/{token}", registrationHandler.PreviewEmailInvite)
 		api.Get("/invite/{code}", registrationHandler.PreviewInvite)
 		api.Post("/register", registrationHandler.Register)
 		api.Post("/access-requests", registrationHandler.SubmitAccessRequest)
+		api.Post("/donations", donationHandler.Submit)
+		api.Get("/events", eventHandler.ListPublic)
+		api.Get("/events/{eventID}", eventHandler.GetPublic)
+		api.Get("/gallery", siteContentHandler.ListGalleryPublic)
+		api.Get("/featured-postulant", siteContentHandler.GetFeaturedPostulantPublic)
 		api.Post("/club-registration-requests", clubRegistrationHandler.Submit)
-		// Google finish-registration — deferred until GOOGLE_CLIENT_ID is set up
-		// api.Get("/club-registration/access/{token}", clubRegistrationHandler.PreviewAccess)
-		// api.Post("/club-registration/complete", clubRegistrationHandler.CompleteWithGoogle)
-		// api.Get("/auth/google-client-id", clubRegistrationHandler.GoogleClientID)
+		api.Get("/club-registration/access/{token}", clubRegistrationHandler.PreviewAccess)
+		api.Post("/club-registration/complete", clubRegistrationHandler.Complete)
+		api.Get("/auth/google-client-id", clubRegistrationHandler.GoogleClientID)
 		api.Get("/push/vapid-key", birthdayHandler.VAPIDPublicKey)
 		api.Post("/internal/birthdays/run", internalHandler.RunBirthdays)
 		api.Get("/ws/chat", chatWSHandler.ServeWS)
@@ -202,6 +223,27 @@ func (s *Server) buildRouter() (chi.Router, *scheduler.BirthdayScheduler, error)
 				admin.Get("/access-requests", registrationHandler.ListAdminAccessRequests)
 				admin.Post("/access-requests/{requestID}/approve", registrationHandler.ApproveAdminAccessRequest)
 				admin.Post("/access-requests/{requestID}/reject", registrationHandler.RejectAccessRequest)
+				admin.Get("/donations", donationHandler.List)
+				admin.Post("/donations/{donationID}/received", donationHandler.MarkReceived)
+				admin.Get("/events", eventHandler.ListAdmin)
+				admin.Post("/events", eventHandler.Create)
+				admin.Get("/events/{eventID}", eventHandler.GetAdmin)
+				admin.Patch("/events/{eventID}", eventHandler.Update)
+				admin.Delete("/events/{eventID}", eventHandler.Delete)
+				admin.Post("/events/{eventID}/flyer", eventHandler.UploadFlyer)
+				admin.Post("/events/{eventID}/images", eventHandler.AddImage)
+				admin.Delete("/events/{eventID}/images/{imageID}", eventHandler.DeleteImage)
+
+				admin.Get("/gallery", siteContentHandler.ListGalleryAdmin)
+				admin.Post("/gallery", siteContentHandler.CreateGallery)
+				admin.Patch("/gallery/{imageID}", siteContentHandler.UpdateGallery)
+				admin.Post("/gallery/{imageID}/image", siteContentHandler.UploadGalleryImage)
+				admin.Delete("/gallery/{imageID}", siteContentHandler.DeleteGallery)
+				admin.Get("/featured-postulants", siteContentHandler.ListFeaturedPostulantsAdmin)
+				admin.Post("/featured-postulants", siteContentHandler.CreateFeaturedPostulant)
+				admin.Patch("/featured-postulants/{postulantID}", siteContentHandler.UpdateFeaturedPostulant)
+				admin.Post("/featured-postulants/{postulantID}/flyer", siteContentHandler.UploadPostulantFlyer)
+				admin.Delete("/featured-postulants/{postulantID}", siteContentHandler.DeleteFeaturedPostulant)
 
 				admin.Get("/club-registration-requests", clubRegistrationHandler.List)
 				admin.Get("/club-registration-requests/{requestID}", clubRegistrationHandler.Get)
@@ -258,6 +300,7 @@ func (s *Server) buildRouter() (chi.Router, *scheduler.BirthdayScheduler, error)
 
 			protected.Route("/social", func(social chi.Router) {
 				social.Post("/posts", socialHandler.CreatePost)
+				social.Post("/posts/{postID}/repost", socialHandler.Repost)
 				social.Delete("/posts/{postID}", socialHandler.DeletePost)
 				social.Post("/posts/{postID}/comments", socialHandler.CreateComment)
 				social.Post("/posts/{postID}/reactions", socialHandler.React)
