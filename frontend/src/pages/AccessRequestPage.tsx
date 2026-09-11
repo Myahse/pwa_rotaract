@@ -19,12 +19,19 @@ export function AccessRequestPage() {
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault()
+    if (form.password.length > 0 && form.password.length < 8) {
+      setError('Un mot de passe d’au moins 8 caractères est requis pour un nouveau compte.')
+      return
+    }
     setLoading(true)
     setError('')
     try {
       await apiRequest('/access-requests', {
         method: 'POST',
-        body: JSON.stringify(form),
+        body: JSON.stringify({
+          ...form,
+          password: form.password || undefined,
+        }),
       })
       setDone(true)
     } catch (err) {
@@ -58,7 +65,7 @@ export function AccessRequestPage() {
           <label>Email<input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required /></label>
           <label>Mot de passe
             <div className="password-field">
-              <input type={showPassword ? 'text' : 'password'} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required minLength={8} autoComplete="new-password" />
+              <input type={showPassword ? 'text' : 'password'} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} autoComplete="new-password" />
               <button
                 type="button"
                 className="password-toggle icon-button"

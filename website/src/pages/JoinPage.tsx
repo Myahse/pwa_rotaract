@@ -32,7 +32,7 @@ export function JoinPage() {
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault()
-    if (!done && form.password.length < 8) {
+    if (form.password.length > 0 && form.password.length < 8) {
       setError(t.joinPasswordRequired)
       return
     }
@@ -45,7 +45,7 @@ export function JoinPage() {
           first_name: form.first_name,
           last_name: form.last_name,
           email: form.email,
-          password: form.password,
+          password: form.password || undefined,
           club_name: CLUB_NAME,
           profession: form.profession || undefined,
         }),
@@ -137,8 +137,6 @@ export function JoinPage() {
               value={form.password}
               onChange={(e) => setForm({ ...form, password: e.target.value })}
               autoComplete="new-password"
-              minLength={8}
-              required
             />
           </label>
           <p className="field-hint">{t.joinPasswordHint}</p>
