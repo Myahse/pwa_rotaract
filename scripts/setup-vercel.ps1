@@ -60,6 +60,9 @@ foreach ($project in $projects) {
       npm install
     }
 
+    Write-Host "Configuring Vercel project root directory..."
+    npx vercel project update $project.Name --root-directory $project.Dir --framework vite --output-directory dist --build-command "npm run build" --yes --scope $Scope | Out-Null
+
     Write-Host "Linking Vercel project (scope: $Scope)..."
     npx vercel link --yes --project $project.Name --scope $Scope
     if ($LASTEXITCODE -ne 0) {
@@ -83,5 +86,5 @@ foreach ($project in $projects) {
 }
 
 Write-Host ""
-Write-Host "Done. In each Vercel project, set Root Directory to the matching folder if prompted." -ForegroundColor Cyan
+Write-Host "Done. Root Directory is set automatically for each project." -ForegroundColor Cyan
 Write-Host "If API is not on api.rotaractiugb.com yet, edit $($projects[0].Dir)/vercel.json rewrite destination in all four apps." -ForegroundColor Yellow
