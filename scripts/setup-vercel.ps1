@@ -7,7 +7,8 @@
 #   .\scripts\setup-vercel.ps1 -Deploy
 
 param(
-  [switch]$Deploy
+  [switch]$Deploy,
+  [string]$Scope = "myahses-projects"
 )
 
 $ErrorActionPreference = "Stop"
@@ -59,16 +60,16 @@ foreach ($project in $projects) {
       npm install
     }
 
-    Write-Host "Linking Vercel project..."
-    npx vercel link --yes --project $project.Name
+    Write-Host "Linking Vercel project (scope: $Scope)..."
+    npx vercel link --yes --project $project.Name --scope $Scope
     if ($LASTEXITCODE -ne 0) {
       Write-Host "Creating project on first deploy..."
-      npx vercel --yes --name $project.Name
+      npx vercel --yes --scope $Scope
     }
 
     if ($Deploy) {
       Write-Host "Deploying to production..."
-      npx vercel deploy --prod --yes
+      npx vercel deploy --prod --yes --scope $Scope
     } else {
       Write-Host "Skipped deploy (pass -Deploy to publish)."
     }
