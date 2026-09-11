@@ -6,7 +6,7 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://api.rotaractiugb.com/api/:path*"
+      "destination": "https://pwa-rotaract.onrender.com/api/:path*"
     },
     {
       "source": "/((?!assets/|sw\\.js|manifest\\.webmanifest|workbox-).*)",

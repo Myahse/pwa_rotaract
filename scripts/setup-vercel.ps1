@@ -87,4 +87,4 @@ foreach ($project in $projects) {
 
 Write-Host ""
 Write-Host "Done. Root Directory is set automatically for each project." -ForegroundColor Cyan
-Write-Host "If API is not on api.rotaractiugb.com yet, edit $($projects[0].Dir)/vercel.json rewrite destination in all four apps." -ForegroundColor Yellow
+Write-Host "API rewrite target: https://pwa-rotaract.onrender.com (not api.rotaractiugb.com — that is Tombola)." -ForegroundColor DarkGray
