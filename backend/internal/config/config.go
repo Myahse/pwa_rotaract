@@ -14,8 +14,9 @@ type Config struct {
 	Env         string
 	Host        string
 	Port        string
-	CORSOrigins []string
-	LogLevel    slog.Level
+	CORSOrigins  []string
+	CORSAllowAll bool
+	LogLevel     slog.Level
 
 	DatabaseURL      string
 	JWTSecret        string
@@ -57,11 +58,15 @@ type BrevoConfig struct {
 func Load() (*Config, error) {
 	_ = godotenv.Load()
 
+	corsOriginsRaw := getEnv("CORS_ORIGINS", "http://localhost:5173")
+	corsAllowAll := strings.TrimSpace(corsOriginsRaw) == "*"
+
 	cfg := &Config{
 		Env:                    getEnv("APP_ENV", "development"),
 		Host:                   getEnv("HOST", "0.0.0.0"),
 		Port:                   getEnv("PORT", "8088"),
-		CORSOrigins:            splitCSV(getEnv("CORS_ORIGINS", "http://localhost:5173")),
+		CORSAllowAll:           corsAllowAll,
+		CORSOrigins:            nil,
 		DatabaseURL:            os.Getenv("DATABASE_URL"),
 		JWTSecret:              getEnv("JWT_SECRET", "dev-change-me"),
 		BootstrapAdminEmail:    os.Getenv("BOOTSTRAP_ADMIN_EMAIL"),
@@ -85,6 +90,9 @@ func Load() (*Config, error) {
 		},
 		// Deferred: uncomment GOOGLE_CLIENT_ID in .env when enabling Google Sign-In.
 		GoogleClientID: os.Getenv("GOOGLE_CLIENT_ID"),
+	}
+	if !corsAllowAll {
+		cfg.CORSOrigins = splitCSV(corsOriginsRaw)
 	}
 
 	ttl, err := time.ParseDuration(getEnv("JWT_ACCESS_TTL", "24h"))

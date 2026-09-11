@@ -143,14 +143,21 @@ func (s *Server) buildRouter() (chi.Router, *scheduler.BirthdayScheduler, error)
 	r.Use(chimiddleware.RealIP)
 	r.Use(middleware.Logger(s.logger))
 	r.Use(chimiddleware.Recoverer)
-	r.Use(cors.Handler(cors.Options{
-		AllowedOrigins:   s.cfg.CORSOrigins,
+	corsOptions := cors.Options{
 		AllowedMethods:   []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-Request-ID", "X-Cron-Secret"},
 		ExposedHeaders:   []string{"X-Request-ID"},
 		AllowCredentials: true,
 		MaxAge:           300,
-	}))
+	}
+	if s.cfg.CORSAllowAll {
+		corsOptions.AllowOriginFunc = func(_ *http.Request, origin string) bool {
+			return origin != ""
+		}
+	} else {
+		corsOptions.AllowedOrigins = s.cfg.CORSOrigins
+	}
+	r.Use(cors.Handler(corsOptions))
 
 	r.Get("/health", healthHandler.Health)
 	r.Get("/ready", healthHandler.Ready)
