@@ -1,0 +1,86 @@
+# Creates / links four Vercel projects for this monorepo (admin, frontend, website, social).
+# Prerequisite: npx vercel login
+#
+# Usage (from repo root):
+#   .\scripts\setup-vercel.ps1
+# Optional:
+#   .\scripts\setup-vercel.ps1 -Deploy
+
+param(
+  [switch]$Deploy
+)
+
+$ErrorActionPreference = "Stop"
+$Root = Split-Path -Parent $PSScriptRoot
+
+$projects = @(
+  @{
+    Dir = "admin"
+    Name = "rotaract-admin"
+    Domain = "admin.rotaractiugb.com"
+    EnvFile = ".env"
+  },
+  @{
+    Dir = "frontend"
+    Name = "rotaract-app"
+    Domain = "app.rotaractiugb.com"
+    EnvFile = ".env"
+  },
+  @{
+    Dir = "website"
+    Name = "rotaract-website"
+    Domain = "www.rotaractiugb.com"
+    EnvFile = ".env"
+  },
+  @{
+    Dir = "social"
+    Name = "rotaract-social"
+    Domain = "social.rotaractiugb.com"
+    EnvFile = ".env"
+  }
+)
+
+Write-Host "Checking Vercel login..." -ForegroundColor Cyan
+npx vercel whoami | Out-Null
+if ($LASTEXITCODE -ne 0) {
+  Write-Host "Not logged in. Run: npx vercel login" -ForegroundColor Yellow
+  exit 1
+}
+
+foreach ($project in $projects) {
+  $path = Join-Path $Root $project.Dir
+  Write-Host ""
+  Write-Host "=== $($project.Name) ($($project.Dir)) ===" -ForegroundColor Green
+
+  Push-Location $path
+  try {
+    if (-not (Test-Path "node_modules")) {
+      Write-Host "Installing dependencies..."
+      npm install
+    }
+
+    Write-Host "Linking Vercel project..."
+    npx vercel link --yes --project $project.Name
+    if ($LASTEXITCODE -ne 0) {
+      Write-Host "Creating project on first deploy..."
+      npx vercel --yes --name $project.Name
+    }
+
+    if ($Deploy) {
+      Write-Host "Deploying to production..."
+      npx vercel deploy --prod --yes
+    } else {
+      Write-Host "Skipped deploy (pass -Deploy to publish)."
+    }
+
+    Write-Host "Suggested domain: $($project.Domain)" -ForegroundColor DarkGray
+    Write-Host "Set env vars in Vercel dashboard from $($project.Dir)/$($project.EnvFile)" -ForegroundColor DarkGray
+  }
+  finally {
+    Pop-Location
+  }
+}
+
+Write-Host ""
+Write-Host "Done. In each Vercel project, set Root Directory to the matching folder if prompted." -ForegroundColor Cyan
+Write-Host "If API is not on api.rotaractiugb.com yet, edit $($projects[0].Dir)/vercel.json rewrite destination in all four apps." -ForegroundColor Yellow
