@@ -2,9 +2,17 @@ import type { ApiError } from './types'
 
 const PRODUCTION_API = 'https://pwa-rotaract.onrender.com/api/v1'
 
+function normalizeApiBase(raw: string): string {
+  const base = raw.trim().replace(/\/$/, '')
+  if (!base) return PRODUCTION_API
+  if (base.endsWith('/api/v1')) return base
+  if (base.endsWith('/api')) return `${base}/v1`
+  return `${base}/api/v1`
+}
+
 function resolveApiBase(): string {
-  const fromEnv = (import.meta.env.VITE_API_BASE as string | undefined)?.replace(/\/$/, '')
-  if (fromEnv) return fromEnv
+  const fromEnv = import.meta.env.VITE_API_BASE as string | undefined
+  if (fromEnv?.trim()) return normalizeApiBase(fromEnv)
   if (import.meta.env.PROD) return PRODUCTION_API
   return '/api/v1'
 }
@@ -49,6 +57,9 @@ async function parseJsonBody<T>(res: Response, body: string): Promise<T> {
 async function parseError(res: Response, body: string): Promise<string> {
   if (isHtmlBody(body)) {
     return 'Réponse HTML inattendue — vérifiez le proxy API (Vercel /api ou VITE_API_BASE).'
+  }
+  if (body.trim() === '404 page not found') {
+    return 'Route API introuvable — vérifiez VITE_API_BASE (doit pointer vers …/api/v1).'
   }
   try {
     const parsed = JSON.parse(body) as ApiError
