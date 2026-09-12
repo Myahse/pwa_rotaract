@@ -14,10 +14,6 @@ var cardTemplateFS embed.FS
 
 var cardTemplate = template.Must(
 	template.New("card.html").Funcs(template.FuncMap{
-		"upper": func(value string) string {
-			return strings.ToUpper(strings.TrimSpace(value))
-		},
-		"formatCardNumber": formatCardNumber,
 		"formatDate": func(value time.Time) string {
 			return value.Format("02/01/2006")
 		},

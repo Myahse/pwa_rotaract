@@ -17,7 +17,7 @@ func TestRenderHTML(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{"AYA KOUASSI", "Rotaract Abidjan Plateau", "RCI · ABIDJ · 0042", "Émise le 12/09/2026"} {
+	for _, want := range []string{"Aya Kouassi", "Rotaract Abidjan Plateau", "RCI-ABIDJ-0042", "Émise le 12/09/2026", "Rotaract CIV"} {
 		if !strings.Contains(html, want) {
 			t.Fatalf("expected html to contain %q", want)
 		}

@@ -1,66 +1,15 @@
-<div style="width:100%;max-width:430px;margin:0 auto;font-family:Manrope,'Segoe UI',Arial,sans-serif;">
-  <div style="background:#be034d;border-radius:14px;padding:3px;box-shadow:0 10px 28px rgba(190,3,77,.22);">
-    <div style="background:#ffffff;border-radius:12px;overflow:hidden;">
-      <!-- Header -->
-      <div style="background:linear-gradient(135deg,#910236 0%,#be034d 55%,#d41862 100%);padding:14px 16px 12px;color:#ffffff;">
-        <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
-          <tr>
-            <td width="52" valign="middle" style="padding-right:10px;">
-              <svg width="44" height="44" viewBox="0 0 44 44" aria-hidden="true" style="display:block;">
-                <circle cx="22" cy="22" r="18" fill="none" stroke="#ffffff" stroke-width="1.6"/>
-                <circle cx="22" cy="22" r="7" fill="none" stroke="#ffffff" stroke-width="1.4"/>
-                <line x1="22" y1="22" x2="22" y2="6.5" stroke="#ffffff" stroke-width="1.2"/>
-                <line x1="22" y1="22" x2="35.1" y2="29.5" stroke="#ffffff" stroke-width="1.2"/>
-                <line x1="22" y1="22" x2="8.9" y2="29.5" stroke="#ffffff" stroke-width="1.2"/>
-                <line x1="22" y1="22" x2="35.1" y2="14.5" stroke="#ffffff" stroke-width="1.2"/>
-                <line x1="22" y1="22" x2="8.9" y2="14.5" stroke="#ffffff" stroke-width="1.2"/>
-                <line x1="22" y1="22" x2="22" y2="37.5" stroke="#ffffff" stroke-width="1.2"/>
-              </svg>
-            </td>
-            <td valign="middle">
-              <div style="font-size:17px;font-weight:700;letter-spacing:.04em;line-height:1.1;">ROTARACT</div>
-              <div style="font-size:11px;opacity:.92;margin-top:2px;">Côte d'Ivoire</div>
-              <div style="font-size:9px;font-style:italic;opacity:.78;margin-top:4px;">Service Above Self</div>
-            </td>
-            <td width="44" valign="middle" align="right">
-              <svg width="36" height="36" viewBox="0 0 44 44" aria-hidden="true" style="display:block;opacity:.35;">
-                <circle cx="22" cy="22" r="18" fill="none" stroke="#ffffff" stroke-width="1.4"/>
-                <circle cx="22" cy="22" r="7" fill="none" stroke="#ffffff" stroke-width="1.2"/>
-                <line x1="22" y1="22" x2="22" y2="6.5" stroke="#ffffff" stroke-width="1"/>
-                <line x1="22" y1="22" x2="35.1" y2="29.5" stroke="#ffffff" stroke-width="1"/>
-                <line x1="22" y1="22" x2="8.9" y2="29.5" stroke="#ffffff" stroke-width="1"/>
-              </svg>
-            </td>
-          </tr>
-        </table>
-      </div>
-
-      <!-- Body -->
-      <div style="padding:16px 18px 14px 14px;position:relative;">
-        <div style="position:absolute;left:0;top:14px;bottom:14px;width:4px;background:#be034d;border-radius:0 4px 4px 0;"></div>
-        <div style="padding-left:8px;">
-          <div style="font-size:10px;font-weight:700;letter-spacing:.14em;color:#be034d;margin-bottom:8px;">CARTE DE MEMBRE</div>
-          <div style="font-size:22px;line-height:1.15;font-weight:700;color:#18181b;text-transform:uppercase;word-break:break-word;">{{upper .FullName}}</div>
-          <div style="font-size:13px;line-height:1.35;color:#3f3f46;margin-top:8px;">{{.ClubName}}</div>
-          {{if .MemberSince}}
-          <div style="font-size:11px;color:#71717a;margin-top:6px;">Membre depuis {{.MemberSince}}</div>
-          {{end}}
-        </div>
-      </div>
-
-      <!-- Footer -->
-      <div style="background:#f8f6f9;border-top:2px solid #be034d;padding:12px 16px;">
-        <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
-          <tr>
-            <td align="left" style="font-family:Consolas,'Courier New',monospace;font-size:14px;font-weight:700;color:#be034d;letter-spacing:.03em;">
-              {{formatCardNumber .CardNumber}}
-            </td>
-            <td align="right" style="font-size:10px;color:#71717a;white-space:nowrap;padding-left:12px;">
-              Émise le {{formatDate .IssuedAt}}
-            </td>
-          </tr>
-        </table>
-      </div>
-    </div>
-  </div>
-</div>
+<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="width:100%;max-width:430px;margin:0 auto;background:#ffffff;border:1px solid #ececee;border-radius:16px;overflow:hidden;font-family:Manrope,'Segoe UI',Arial,sans-serif;">
+  <tr>
+    <td style="padding:24px 28px;">
+      <p style="margin:0 0 8px;text-transform:uppercase;letter-spacing:.06em;font-size:11px;font-weight:650;color:#be034d;">Rotaract CIV</p>
+      <p style="margin:0 0 16px;font-size:13px;color:#73737a;">Carte de membre</p>
+      <p style="margin:0 0 6px;font-size:20px;line-height:1.25;font-weight:650;color:#141416;">{{.FullName}}</p>
+      <p style="margin:0 0 12px;font-size:15px;color:#444;">{{.ClubName}}</p>
+      {{if .MemberSince}}
+      <p style="margin:0 0 12px;font-size:14px;color:#73737a;">Membre depuis {{.MemberSince}}</p>
+      {{end}}
+      <p style="margin:0 0 6px;font-size:14px;color:#444;">Numéro de carte : <strong style="color:#141416;">{{.CardNumber}}</strong></p>
+      <p style="margin:0;font-size:13px;color:#73737a;">Émise le {{formatDate .IssuedAt}}</p>
+    </td>
+  </tr>
+</table>
