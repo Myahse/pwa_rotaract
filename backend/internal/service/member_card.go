@@ -194,13 +194,20 @@ func (s *MemberCardService) sendCard(ctx context.Context, card *domain.MemberCar
 		memberSince = card.IssuedAt.Format("01/2006")
 	}
 
-	pdfBytes, err := membercard.RenderPDF(membercard.CardData{
+	cardData := membercard.CardData{
 		FullName:    card.User.FullName(),
 		ClubName:    card.Club.Name,
 		CardNumber:  card.CardNumber,
 		MemberSince: memberSince,
 		IssuedAt:    card.IssuedAt,
-	})
+	}
+
+	pdfBytes, err := membercard.RenderPDF(cardData)
+	if err != nil {
+		return err
+	}
+
+	cardHTML, err := membercard.RenderHTMLSafe(cardData)
 	if err != nil {
 		return err
 	}
@@ -210,6 +217,7 @@ func (s *MemberCardService) sendCard(ctx context.Context, card *domain.MemberCar
 		FirstName:  card.User.FirstName,
 		ClubName:   card.Club.Name,
 		CardNumber: card.CardNumber,
+		CardHTML:   cardHTML,
 		PDF:        pdfBytes,
 	}); err != nil {
 		return err

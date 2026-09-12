@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"html/template"
 	"io"
 	"log/slog"
 	"net/http"
@@ -73,6 +74,7 @@ type MemberCardEmail struct {
 	FirstName  string
 	ClubName   string
 	CardNumber string
+	CardHTML   template.HTML
 	PDF        []byte
 }
 
