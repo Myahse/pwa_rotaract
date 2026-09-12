@@ -1,6 +1,15 @@
 import type { ApiError } from './types'
 
-const API = (import.meta.env.VITE_API_BASE as string | undefined)?.replace(/\/$/, '') || '/api/v1'
+const PRODUCTION_API = 'https://pwa-rotaract.onrender.com/api/v1'
+
+function resolveApiBase(): string {
+  const fromEnv = (import.meta.env.VITE_API_BASE as string | undefined)?.replace(/\/$/, '')
+  if (fromEnv) return fromEnv
+  if (import.meta.env.PROD) return PRODUCTION_API
+  return '/api/v1'
+}
+
+const API = resolveApiBase()
 
 export class ApiClientError extends Error {
   status: number
