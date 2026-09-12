@@ -32,9 +32,10 @@ type healthResponse struct {
 }
 
 type statusResponse struct {
-	Status  string `json:"status"`
-	Message string `json:"message"`
-	Version string `json:"version"`
+	Status   string   `json:"status"`
+	Message  string   `json:"message"`
+	Version  string   `json:"version"`
+	Features []string `json:"features"`
 }
 
 func (h *HealthHandler) Health(w http.ResponseWriter, r *http.Request) {
@@ -65,7 +66,12 @@ func (h *HealthHandler) Status(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, statusResponse{
 		Status:  "ok",
 		Message: "Rotaract CIV API is running",
-		Version: "0.2.0",
+		Version: "0.2.1",
+		Features: []string{
+			"member_cards",
+			"club_dues",
+			"club_access_roles",
+		},
 	})
 }
 

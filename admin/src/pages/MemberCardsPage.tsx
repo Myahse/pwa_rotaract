@@ -1,8 +1,20 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { apiRequest } from '../api/client'
+import { apiRequest, ApiClientError } from '../api/client'
 import type { Club, MemberCard, MemberCardListResponse } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
+
+function formatMemberCardsError(err: unknown): string {
+  if (err instanceof ApiClientError) {
+    if (err.status === 404) {
+      return 'Le backend Render n\'a pas encore l\'API cartes membre. Ouvrez Render → pwa-rotaract → Manual Deploy (branche main), puis réessayez.'
+    }
+    if (err.status === 500) {
+      return 'Erreur serveur — vérifiez dans les logs Render que la migration member_cards (029) s\'est bien exécutée.'
+    }
+  }
+  return err instanceof Error ? err.message : 'Erreur'
+}
 
 export function MemberCardsPage() {
   const { token } = useAuth()
@@ -16,6 +28,16 @@ export function MemberCardsPage() {
   const [message, setMessage] = useState('')
   const [busy, setBusy] = useState(false)
   const [busyId, setBusyId] = useState<string | null>(null)
+
+  useEffect(() => {
+    apiRequest<{ features?: string[] }>('/status')
+      .then((status) => {
+        if (status.features && !status.features.includes('member_cards')) {
+          setError('Backend pas à jour (member_cards manquant). Redéployez le service Render backend.')
+        }
+      })
+      .catch(() => {})
+  }, [])
 
   useEffect(() => {
     if (!token) return
@@ -40,7 +62,8 @@ export function MemberCardsPage() {
   }
 
   useEffect(() => {
-    load().catch((err) => setError(err instanceof Error ? err.message : 'Erreur'))
+    if (!token) return
+    load().catch((err) => setError(formatMemberCardsError(err)))
   }, [token, clubFilter, pendingOnly])
 
   const clubNameById = useMemo(
@@ -63,7 +86,7 @@ export function MemberCardsPage() {
       setMessage(`${res.created} carte(s) générée(s) pour les membres sans carte.`)
       await load()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Action impossible')
+      setError(formatMemberCardsError(err))
     } finally {
       setBusy(false)
     }
@@ -85,7 +108,7 @@ export function MemberCardsPage() {
       if (res.errors?.length) setError(res.errors.slice(0, 3).join(' · '))
       await load()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Envoi impossible')
+      setError(formatMemberCardsError(err))
     } finally {
       setBusy(false)
     }
@@ -101,7 +124,7 @@ export function MemberCardsPage() {
       setMessage('Carte envoyée par email.')
       await load()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Envoi impossible')
+      setError(formatMemberCardsError(err))
     } finally {
       setBusyId(null)
     }
