@@ -23,11 +23,25 @@ func NewPasswordResetRepository(pool *pgxpool.Pool) *PasswordResetRepository {
 }
 
 func (r *PasswordResetRepository) Create(ctx context.Context, userID uuid.UUID, tokenHash string, expiresAt time.Time) error {
-	_, err := r.pool.Exec(ctx, `
-		DELETE FROM password_reset_tokens WHERE user_id = $1 OR expires_at < NOW();
-		INSERT INTO password_reset_tokens (user_id, token_hash, expires_at) VALUES ($1, $2, $3)
-	`, userID, tokenHash, expiresAt)
-	return err
+	tx, err := r.pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	if _, err := tx.Exec(ctx, `DELETE FROM password_reset_tokens WHERE user_id = $1`, userID); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(ctx, `DELETE FROM password_reset_tokens WHERE expires_at < NOW()`); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(ctx, `
+		INSERT INTO password_reset_tokens (user_id, token_hash, expires_at)
+		VALUES ($1, $2, $3)
+	`, userID, tokenHash, expiresAt); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
 }
 
 func (r *PasswordResetRepository) GetValid(ctx context.Context, tokenHash string) (*PasswordResetToken, error) {

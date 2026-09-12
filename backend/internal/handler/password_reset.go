@@ -2,15 +2,19 @@ package handler
 
 import (
 	"errors"
+	"log/slog"
 	"net/http"
 
 	"github.com/rotaract-civ/backend/internal/service"
 )
 
-type PasswordResetHandler struct{ resets *service.PasswordResetService }
+type PasswordResetHandler struct {
+	resets *service.PasswordResetService
+	logger *slog.Logger
+}
 
-func NewPasswordResetHandler(resets *service.PasswordResetService) *PasswordResetHandler {
-	return &PasswordResetHandler{resets: resets}
+func NewPasswordResetHandler(resets *service.PasswordResetService, logger *slog.Logger) *PasswordResetHandler {
+	return &PasswordResetHandler{resets: resets, logger: logger}
 }
 
 func (h *PasswordResetHandler) Request(w http.ResponseWriter, r *http.Request) {
@@ -20,6 +24,7 @@ func (h *PasswordResetHandler) Request(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.resets.Request(r.Context(), input); err != nil {
+		h.logger.Error("password reset request failed", "err", err)
 		WriteError(w, http.StatusInternalServerError, "failed to request password reset")
 		return
 	}

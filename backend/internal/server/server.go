@@ -118,7 +118,7 @@ func (s *Server) buildRouter() (chi.Router, *scheduler.BirthdayScheduler, error)
 	birthdayScheduler := scheduler.NewBirthdayScheduler(birthdayService, s.logger)
 
 	authHandler := handler.NewAuthHandler(authService)
-	passwordResetHandler := handler.NewPasswordResetHandler(passwordResetService)
+	passwordResetHandler := handler.NewPasswordResetHandler(passwordResetService, s.logger)
 	donationHandler := handler.NewDonationHandler(donationService)
 	eventHandler := handler.NewPublicEventHandler(eventService)
 	siteContentHandler := handler.NewSiteContentHandler(siteContentService)

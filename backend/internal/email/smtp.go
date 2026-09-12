@@ -23,6 +23,9 @@ type Client struct {
 }
 
 func NewClient(cfg Config, logger *slog.Logger) *Client {
+	if logger == nil {
+		logger = slog.Default()
+	}
 	return &Client{cfg: cfg, logger: logger}
 }
 
