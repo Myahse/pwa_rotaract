@@ -30,3 +30,5 @@ backend/tmp/
 # Uploads / local data
 backend/uploads/
 *.log
+.vercel
+.env*

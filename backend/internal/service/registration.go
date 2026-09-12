@@ -255,35 +255,9 @@ func (s *RegistrationService) ApproveAccessRequest(ctx context.Context, reviewer
 		return nil, err
 	}
 
-	var user *domain.User
-	if req.ExistingUserID != nil {
-		user, err = s.users.GetByID(ctx, *req.ExistingUserID)
-		if err != nil {
-			return nil, err
-		}
-	} else if existing, err := s.users.GetByEmail(ctx, req.Email); err == nil {
-		user = existing
-	} else if !errors.Is(err, repository.ErrNotFound) {
+	user, err := s.resolveAccessRequestUser(ctx, req, requestID)
+	if err != nil {
 		return nil, err
-	} else {
-		passwordHash, err := s.requests.GetPasswordHash(ctx, requestID)
-		if err != nil {
-			return nil, err
-		}
-		user = &domain.User{
-			Email:        req.Email,
-			PasswordHash: passwordHash,
-			FirstName:    req.FirstName,
-			LastName:     req.LastName,
-			Phone:        req.Phone,
-			BirthDate:    req.BirthDate,
-			Profession:   req.Profession,
-			MemberSince:  req.MemberSince,
-			IsActive:     true,
-		}
-		if err := s.users.Create(ctx, user); err != nil {
-			return nil, err
-		}
 	}
 
 	if _, err := s.clubs.GetMembership(ctx, *targetClubID, user.ID); errors.Is(err, repository.ErrNotFound) {
@@ -299,6 +273,48 @@ func (s *RegistrationService) ApproveAccessRequest(ctx context.Context, reviewer
 	}
 
 	user.PasswordHash = ""
+	return user, nil
+}
+
+func (s *RegistrationService) resolveAccessRequestUser(ctx context.Context, req *domain.AccessRequest, requestID uuid.UUID) (*domain.User, error) {
+	if req.ExistingUserID != nil {
+		user, err := s.users.GetByID(ctx, *req.ExistingUserID)
+		if err == nil {
+			return user, nil
+		}
+		if !errors.Is(err, repository.ErrNotFound) {
+			return nil, err
+		}
+	}
+
+	if existing, err := s.users.GetByEmail(ctx, req.Email); err == nil {
+		return existing, nil
+	} else if !errors.Is(err, repository.ErrNotFound) {
+		return nil, err
+	}
+
+	passwordHash, err := s.requests.GetPasswordHash(ctx, requestID)
+	if err != nil {
+		return nil, err
+	}
+
+	user := &domain.User{
+		Email:        strings.ToLower(strings.TrimSpace(req.Email)),
+		PasswordHash: passwordHash,
+		FirstName:    req.FirstName,
+		LastName:     req.LastName,
+		Phone:        req.Phone,
+		BirthDate:    req.BirthDate,
+		Profession:   req.Profession,
+		MemberSince:  req.MemberSince,
+		IsActive:     true,
+	}
+	if err := s.users.Create(ctx, user); err != nil {
+		if isUniqueViolation(err) {
+			return s.users.GetByEmail(ctx, req.Email)
+		}
+		return nil, err
+	}
 	return user, nil
 }
 

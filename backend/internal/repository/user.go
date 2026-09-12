@@ -67,8 +67,8 @@ func (r *UserRepository) GetByGoogleSub(ctx context.Context, googleSub string) (
 }
 
 func (r *UserRepository) GetByEmail(ctx context.Context, email string) (*domain.User, error) {
-	query := `SELECT ` + userSelectColumns + ` FROM users WHERE email = $1`
-	return r.scanUser(r.pool.QueryRow(ctx, query, email))
+	query := `SELECT ` + userSelectColumns + ` FROM users WHERE LOWER(email) = LOWER($1) LIMIT 1`
+	return r.scanUser(r.pool.QueryRow(ctx, query, strings.TrimSpace(email)))
 }
 
 func (r *UserRepository) GetByID(ctx context.Context, id uuid.UUID) (*domain.User, error) {

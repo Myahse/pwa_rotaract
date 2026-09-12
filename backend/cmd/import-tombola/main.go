@@ -13,6 +13,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
 	"github.com/rotaract-civ/backend/internal/auth"
+	"github.com/rotaract-civ/backend/internal/clubname"
 	"github.com/rotaract-civ/backend/internal/database"
 )
 
@@ -50,6 +51,11 @@ func main() {
 		log.Fatal(err)
 	}
 	defer target.Close()
+
+	clubLookup, err := loadClubLookup(ctx, target.Pool)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	rows, err := source.Query(ctx, `SELECT id::text, name, email, phone, club_name FROM members ORDER BY created_at`)
 	if err != nil {
@@ -99,15 +105,11 @@ func main() {
 		if member.ClubName == nil || strings.TrimSpace(*member.ClubName) == "" {
 			continue
 		}
-		var clubID string
-		err = target.Pool.QueryRow(ctx, `SELECT id::text FROM clubs WHERE LOWER(name) = LOWER($1) AND is_active = TRUE LIMIT 1`, strings.TrimSpace(*member.ClubName)).Scan(&clubID)
-		if err == pgx.ErrNoRows {
+		clubID, ok := clubLookup.resolve(*member.ClubName)
+		if !ok {
 			unmatched++
 			log.Printf("unmatched club for %s: %s", email, *member.ClubName)
 			continue
-		}
-		if err != nil {
-			log.Fatal(err)
 		}
 		if dryRun || userID == "dry-run" {
 			continue
@@ -121,6 +123,46 @@ func main() {
 		log.Fatal(err)
 	}
 	log.Printf("Tombola import complete: imported=%d existing=%d unmatched_clubs=%d dry_run=%t", imported, existing, unmatched, dryRun)
+}
+
+type clubLookupMap struct {
+	byExact      map[string]string
+	byNormalized map[string]string
+}
+
+func loadClubLookup(ctx context.Context, pool *pgxpool.Pool) (*clubLookupMap, error) {
+	rows, err := pool.Query(ctx, `SELECT id::text, name FROM clubs WHERE is_active = TRUE`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	lookup := &clubLookupMap{
+		byExact:      make(map[string]string),
+		byNormalized: make(map[string]string),
+	}
+	for rows.Next() {
+		var id, name string
+		if err := rows.Scan(&id, &name); err != nil {
+			return nil, err
+		}
+		lookup.byExact[strings.ToLower(strings.TrimSpace(name))] = id
+		if key := clubname.NormalizeKey(name); key != "" {
+			lookup.byNormalized[key] = id
+		}
+	}
+	return lookup, rows.Err()
+}
+
+func (m *clubLookupMap) resolve(clubName string) (string, bool) {
+	trimmed := strings.TrimSpace(clubName)
+	if id, ok := m.byExact[strings.ToLower(trimmed)]; ok {
+		return id, true
+	}
+	if id, ok := m.byNormalized[clubname.NormalizeKey(trimmed)]; ok {
+		return id, true
+	}
+	return "", false
 }
 
 func splitName(fullName string) (string, string) {

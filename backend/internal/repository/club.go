@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/rotaract-civ/backend/internal/clubname"
 	"github.com/rotaract-civ/backend/internal/domain"
 )
 
@@ -71,13 +72,46 @@ func (r *ClubRepository) GetByInviteCode(ctx context.Context, code string) (*dom
 }
 
 func (r *ClubRepository) FindByName(ctx context.Context, name string) (*domain.Club, error) {
+	trimmed := strings.TrimSpace(name)
 	query := `
 		SELECT ` + clubSelectColumns + `
 		FROM clubs
 		WHERE LOWER(name) = LOWER($1) AND is_active = TRUE
 		LIMIT 1
 	`
-	return r.scanClub(r.pool.QueryRow(ctx, query, strings.TrimSpace(name)))
+	club, err := r.scanClub(r.pool.QueryRow(ctx, query, trimmed))
+	if err == nil {
+		return club, nil
+	}
+	if !errors.Is(err, ErrNotFound) {
+		return nil, err
+	}
+
+	key := clubname.NormalizeKey(trimmed)
+	if key == "" {
+		return nil, ErrNotFound
+	}
+
+	rows, err := r.pool.Query(ctx, `
+		SELECT `+clubSelectColumns+`
+		FROM clubs
+		WHERE is_active = TRUE
+	`)
+	if err != nil {
+		return nil, fmt.Errorf("list clubs for name match: %w", err)
+	}
+	defer rows.Close()
+
+	clubs, err := r.scanClubs(rows)
+	if err != nil {
+		return nil, err
+	}
+	for i := range clubs {
+		if clubname.NormalizeKey(clubs[i].Name) == key {
+			return &clubs[i], nil
+		}
+	}
+	return nil, ErrNotFound
 }
 
 func (r *ClubRepository) scanClub(row pgx.Row) (*domain.Club, error) {

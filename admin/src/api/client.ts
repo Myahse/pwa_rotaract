@@ -1,6 +1,6 @@
 import type { ApiError } from './types'
 
-const API = '/api/v1'
+const API = (import.meta.env.VITE_API_BASE as string | undefined)?.replace(/\/$/, '') || '/api/v1'
 
 export class ApiClientError extends Error {
   status: number
@@ -11,12 +11,41 @@ export class ApiClientError extends Error {
   }
 }
 
-async function parseError(res: Response): Promise<string> {
+function isHtmlBody(text: string): boolean {
+  const trimmed = text.trimStart().toLowerCase()
+  return trimmed.startsWith('<!doctype') || trimmed.startsWith('<html')
+}
+
+async function readBody(res: Response): Promise<string> {
+  return res.text()
+}
+
+async function parseJsonBody<T>(res: Response, body: string): Promise<T> {
+  if (isHtmlBody(body)) {
+    throw new ApiClientError(
+      res.status,
+      'Réponse HTML inattendue : l’API n’est pas joignable sur cette URL. Utilisez le déploiement Vercel (rewrites /api) ou définissez VITE_API_BASE vers le backend Render.',
+    )
+  }
+  if (!body.trim()) {
+    return undefined as T
+  }
   try {
-    const body = (await res.json()) as ApiError
-    return body.message || body.error || res.statusText
+    return JSON.parse(body) as T
   } catch {
-    return res.statusText
+    throw new ApiClientError(res.status, body.slice(0, 200) || 'Réponse API invalide')
+  }
+}
+
+async function parseError(res: Response, body: string): Promise<string> {
+  if (isHtmlBody(body)) {
+    return 'Réponse HTML inattendue — vérifiez le proxy API (Vercel /api ou VITE_API_BASE).'
+  }
+  try {
+    const parsed = JSON.parse(body) as ApiError
+    return parsed.message || parsed.error || res.statusText
+  } catch {
+    return body.slice(0, 200) || res.statusText
   }
 }
 
@@ -34,13 +63,14 @@ export async function apiRequest<T>(
   }
 
   const res = await fetch(`${API}${path}`, { ...options, headers })
+  const body = await readBody(res)
   if (!res.ok) {
-    throw new ApiClientError(res.status, await parseError(res))
+    throw new ApiClientError(res.status, await parseError(res, body))
   }
   if (res.status === 204) {
     return undefined as T
   }
-  return (await res.json()) as T
+  return parseJsonBody<T>(res, body)
 }
 
 export async function apiUpload<T>(
@@ -54,8 +84,9 @@ export async function apiUpload<T>(
   }
 
   const res = await fetch(`${API}${path}`, { method: 'POST', body, headers })
+  const responseBody = await readBody(res)
   if (!res.ok) {
-    throw new ApiClientError(res.status, await parseError(res))
+    throw new ApiClientError(res.status, await parseError(res, responseBody))
   }
-  return (await res.json()) as T
+  return parseJsonBody<T>(res, responseBody)
 }

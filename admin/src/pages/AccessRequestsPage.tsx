@@ -1,32 +1,84 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { apiRequest } from '../api/client'
-import type { AccessRequest } from '../api/types'
+import type { AccessRequest, Club } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
 
 type Tab = 'pending' | 'all'
 
+function normalizeClubKey(name: string): string {
+  let s = name.toLowerCase().trim().replace(/uugb/g, 'iugb')
+  for (const word of ['rotaract', 'club', 'de', 'du', 'la', 'le', 'les', 'rotary']) {
+    s = s.replaceAll(word, '')
+  }
+  return s.replace(/[^a-z0-9]/g, '')
+}
+
+function suggestClubId(clubs: Club[], clubName: string): string {
+  const key = normalizeClubKey(clubName)
+  for (const club of clubs) {
+    if (normalizeClubKey(club.name) === key) return club.id
+  }
+  const lower = clubName.toLowerCase()
+  for (const club of clubs) {
+    const name = club.name.toLowerCase()
+    if (name.includes(lower) || lower.includes(name)) return club.id
+  }
+  return clubs[0]?.id ?? ''
+}
+
 export function AccessRequestsPage() {
   const { token } = useAuth()
   const [requests, setRequests] = useState<AccessRequest[]>([])
+  const [clubs, setClubs] = useState<Club[]>([])
+  const [clubChoices, setClubChoices] = useState<Record<string, string>>({})
   const [tab, setTab] = useState<Tab>('pending')
   const [error, setError] = useState('')
   const [busyId, setBusyId] = useState<string | null>(null)
 
+  const activeClubs = useMemo(() => clubs.filter((c) => c.is_active), [clubs])
+
   async function load() {
     if (!token) return
-    const data = await apiRequest<AccessRequest[]>('/admin/access-requests', {}, token)
-    setRequests(data)
+    const [requestData, clubData] = await Promise.all([
+      apiRequest<AccessRequest[]>('/admin/access-requests', {}, token),
+      apiRequest<Club[]>('/admin/clubs', {}, token),
+    ])
+    setRequests(requestData)
+    setClubs(clubData)
+    setClubChoices((prev) => {
+      const next = { ...prev }
+      for (const req of requestData) {
+        if (!req.club_id && !next[req.id]) {
+          next[req.id] = suggestClubId(clubData.filter((c) => c.is_active), req.club_name)
+        }
+      }
+      return next
+    })
   }
 
   useEffect(() => {
     load().catch((err) => setError(err instanceof Error ? err.message : 'Erreur'))
   }, [token])
 
-  async function approve(id: string) {
+  async function approve(request: AccessRequest) {
     if (!token) return
-    setBusyId(id)
+    const body: { club_id?: string } = {}
+    if (!request.club_id) {
+      const clubId = clubChoices[request.id]
+      if (!clubId) {
+        setError('Choisissez le club à associer avant d’approuver.')
+        return
+      }
+      body.club_id = clubId
+    }
+
+    setBusyId(request.id)
+    setError('')
     try {
-      await apiRequest(`/admin/access-requests/${id}/approve`, { method: 'POST', body: '{}' }, token)
+      await apiRequest(`/admin/access-requests/${request.id}/approve`, {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }, token)
       await load()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Action impossible')
@@ -38,6 +90,7 @@ export function AccessRequestsPage() {
   async function reject(id: string) {
     if (!token) return
     setBusyId(id)
+    setError('')
     try {
       await apiRequest(`/admin/access-requests/${id}/reject`, { method: 'POST', body: '{}' }, token)
       await load()
@@ -94,12 +147,35 @@ export function AccessRequestsPage() {
                 <span className={statusBadge(r.status)}>{r.status}</span>
               </header>
               <p className="small">
-                Club : <strong>{r.club_name}</strong>
+                Club demandé : <strong>{r.club_name}</strong>
                 <span className="muted"> · {new Date(r.created_at).toLocaleDateString('fr-FR')}</span>
               </p>
+              {r.status === 'pending' && !r.club_id && (
+                <label className="gap-sm" style={{ marginTop: '0.75rem' }}>
+                  Club à associer
+                  <select
+                    value={clubChoices[r.id] ?? ''}
+                    onChange={(e) => setClubChoices((prev) => ({ ...prev, [r.id]: e.target.value }))}
+                    required
+                  >
+                    <option value="">— Choisir un club —</option>
+                    {activeClubs.map((club) => (
+                      <option key={club.id} value={club.id}>{club.name}</option>
+                    ))}
+                  </select>
+                  <span className="muted small">
+                    Le nom saisi ne correspond pas exactement à un club enregistré. Choisissez le bon club avant validation.
+                  </span>
+                </label>
+              )}
               {r.status === 'pending' && (
                 <div className="actions">
-                  <button type="button" className="btn-small" disabled={busyId === r.id} onClick={() => approve(r.id)}>
+                  <button
+                    type="button"
+                    className="btn-small"
+                    disabled={busyId === r.id || (!r.club_id && !clubChoices[r.id])}
+                    onClick={() => approve(r)}
+                  >
                     Approuver
                   </button>
                   <button type="button" className="btn-small ghost" disabled={busyId === r.id} onClick={() => reject(r.id)}>
