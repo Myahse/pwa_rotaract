@@ -40,6 +40,16 @@ export function IconAccess(props: IconProps) {
   )
 }
 
+export function IconCard(props: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden {...base} {...props}>
+      <rect x="3" y="5" width="18" height="14" rx="2" />
+      <path d="M3 10h18" />
+      <path d="M7 15h4" />
+    </svg>
+  )
+}
+
 export function IconDonate(props: IconProps) {
   return (
     <svg viewBox="0 0 24 24" aria-hidden {...base} {...props}>

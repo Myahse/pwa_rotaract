@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
+	"log/slog"
 	"math/big"
 	"strings"
 	"time"
@@ -34,7 +35,9 @@ type RegistrationService struct {
 	chat         *repository.ChatRepository
 	requests     *repository.AccessRequestRepository
 	emailInvites *repository.EmailInviteRepository
+	memberCards  *MemberCardService
 	mailer       *email.Client
+	logger       *slog.Logger
 	publicURL    string
 	inviteTTL    time.Duration
 }
@@ -45,17 +48,24 @@ func NewRegistrationService(
 	chat *repository.ChatRepository,
 	requests *repository.AccessRequestRepository,
 	emailInvites *repository.EmailInviteRepository,
+	memberCards *MemberCardService,
 	mailer *email.Client,
+	logger *slog.Logger,
 	publicURL string,
 	inviteTTL time.Duration,
 ) *RegistrationService {
+	if logger == nil {
+		logger = slog.Default()
+	}
 	return &RegistrationService{
 		users:        users,
 		clubs:        clubs,
 		chat:         chat,
 		requests:     requests,
 		emailInvites: emailInvites,
+		memberCards:  memberCards,
 		mailer:       mailer,
+		logger:       logger,
 		publicURL:    publicURL,
 		inviteTTL:    inviteTTL,
 	}
@@ -412,6 +422,12 @@ func (s *RegistrationService) joinClub(ctx context.Context, clubID uuid.UUID, us
 			if err := s.chat.AddMember(ctx, group.ID, user.ID); err != nil {
 				return err
 			}
+		}
+	}
+
+	if s.memberCards != nil {
+		if err := s.memberCards.IssueAndSend(ctx, clubID, user.ID, nil); err != nil {
+			s.logger.Warn("member card issue/send failed after join", "club_id", clubID, "user_id", user.ID, "error", err)
 		}
 	}
 	return nil

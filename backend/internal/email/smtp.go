@@ -2,6 +2,7 @@ package email
 
 import (
 	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -49,7 +50,7 @@ func (c *Client) SendRegistrationInvite(invite RegistrationInvite) error {
 		return nil
 	}
 
-	return c.send(invite.To, subject, body)
+	return c.send(invite.To, subject, body, nil)
 }
 
 type ClubAccessEmail struct {
@@ -67,6 +68,19 @@ type PasswordResetEmail struct {
 	ExpiresAt string
 }
 
+type MemberCardEmail struct {
+	To         string
+	FirstName  string
+	ClubName   string
+	CardNumber string
+	PDF        []byte
+}
+
+type Attachment struct {
+	Name    string
+	Content []byte
+}
+
 func (c *Client) SendPasswordReset(reset PasswordResetEmail) error {
 	subject := "Réinitialisez votre mot de passe — Rotaract CIV"
 	body := renderTemplate("password-reset.html", reset)
@@ -74,7 +88,25 @@ func (c *Client) SendPasswordReset(reset PasswordResetEmail) error {
 		c.logger.Info("password reset email (delivery disabled, logged only)", "to", reset.To, "reset_url", reset.ResetURL)
 		return nil
 	}
-	return c.send(reset.To, subject, body)
+	return c.send(reset.To, subject, body, nil)
+}
+
+func (c *Client) SendMemberCard(card MemberCardEmail) error {
+	subject := fmt.Sprintf("Votre carte de membre — %s", card.ClubName)
+	body := renderTemplate("member-card.html", card)
+	filename := fmt.Sprintf("carte-membre-%s.pdf", strings.ReplaceAll(card.CardNumber, "/", "-"))
+
+	if !c.cfg.Enabled {
+		c.logger.Info("member card email (delivery disabled, logged only)",
+			"to", card.To,
+			"subject", subject,
+			"card_number", card.CardNumber,
+			"pdf_bytes", len(card.PDF),
+		)
+		return nil
+	}
+
+	return c.send(card.To, subject, body, []Attachment{{Name: filename, Content: card.PDF}})
 }
 
 func (c *Client) SendClubAccess(access ClubAccessEmail) error {
@@ -91,19 +123,24 @@ func (c *Client) SendClubAccess(access ClubAccessEmail) error {
 		return nil
 	}
 
-	if err := c.send(access.To, subject, body); err != nil {
+	if err := c.send(access.To, subject, body, nil); err != nil {
 		return err
 	}
 	c.logger.Info("club access email sent", "to", access.To, "club", access.ClubName)
 	return nil
 }
 
-func (c *Client) send(to, subject, htmlBody string) error {
+func (c *Client) send(to, subject, htmlBody string, attachments []Attachment) error {
 	if c.cfg.BrevoAPIKey == "" {
 		return fmt.Errorf("BREVO_API_KEY is required for email delivery")
 	}
 	if c.cfg.BrevoSenderEmail == "" {
 		return fmt.Errorf("BREVO_SENDER_EMAIL is required for email delivery")
+	}
+
+	type attachmentPayload struct {
+		Content string `json:"content"`
+		Name    string `json:"name"`
 	}
 
 	payload := struct {
@@ -114,8 +151,9 @@ func (c *Client) send(to, subject, htmlBody string) error {
 		To []struct {
 			Email string `json:"email"`
 		} `json:"to"`
-		Subject     string `json:"subject"`
-		HTMLContent string `json:"htmlContent"`
+		Subject     string              `json:"subject"`
+		HTMLContent string              `json:"htmlContent"`
+		Attachment  []attachmentPayload `json:"attachment,omitempty"`
 	}{
 		Subject:     subject,
 		HTMLContent: htmlBody,
@@ -125,6 +163,15 @@ func (c *Client) send(to, subject, htmlBody string) error {
 	payload.To = []struct {
 		Email string `json:"email"`
 	}{{Email: to}}
+	for _, item := range attachments {
+		if len(item.Content) == 0 {
+			continue
+		}
+		payload.Attachment = append(payload.Attachment, attachmentPayload{
+			Name:    item.Name,
+			Content: base64.StdEncoding.EncodeToString(item.Content),
+		})
+	}
 
 	body, err := json.Marshal(payload)
 	if err != nil {

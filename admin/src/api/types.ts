@@ -248,3 +248,20 @@ export type ApproveClubRegistrationResult = {
   message: string
   expires_at: string
 }
+
+export type MemberCard = {
+  id: string
+  club_id: string
+  user_id: string
+  card_number: string
+  issued_at: string
+  sent_at?: string
+  sent_by?: string
+  user?: User
+  club?: Club
+}
+
+export type MemberCardListResponse = {
+  items: MemberCard[]
+  pending_count: number
+}

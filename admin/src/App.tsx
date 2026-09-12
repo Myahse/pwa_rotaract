@@ -9,6 +9,7 @@ import { ClubRegistrationsPage } from './pages/ClubRegistrationsPage'
 import { ClubsPage } from './pages/ClubsPage'
 import { DashboardPage } from './pages/DashboardPage'
 import { DonationsPage } from './pages/DonationsPage'
+import { MemberCardsPage } from './pages/MemberCardsPage'
 import { EventEditorPage } from './pages/EventEditorPage'
 import { EventsPage } from './pages/EventsPage'
 import { WebsiteHomePage } from './pages/WebsiteHomePage'
@@ -38,6 +39,7 @@ export default function App() {
             <Route path="events/:eventId" element={<EventEditorPage />} />
             <Route path="website-home" element={<WebsiteHomePage />} />
             <Route path="donations" element={<DonationsPage />} />
+            <Route path="member-cards" element={<MemberCardsPage />} />
             <Route path="club-registrations" element={<ClubRegistrationsPage />} />
           </Route>
         </Route>

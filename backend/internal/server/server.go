@@ -72,6 +72,7 @@ func (s *Server) buildRouter() (chi.Router, *scheduler.BirthdayScheduler, error)
 	birthdayRepo := repository.NewBirthdayRepository(s.store.Pool)
 	donationRepo := repository.NewDonationRepository(s.store.Pool)
 	clubDueRepo := repository.NewClubDueRepository(s.store.Pool)
+	memberCardRepo := repository.NewMemberCardRepository(s.store.Pool)
 	eventRepo := repository.NewPublicEventRepository(s.store.Pool)
 	siteContentRepo := repository.NewSiteContentRepository(s.store.Pool)
 	socialRepo := repository.NewSocialRepository(s.store.Pool)
@@ -98,8 +99,9 @@ func (s *Server) buildRouter() (chi.Router, *scheduler.BirthdayScheduler, error)
 	adminService := service.NewAdminService(userRepo, clubRepo, commissionRepo, chatRepo, diaryService, mandateService, profileService, fileStore, s.cfg.MaxAvatarSize)
 	clubService := service.NewClubService(userRepo, clubRepo, commissionRepo, chatRepo)
 	chatService := service.NewChatService(clubRepo, commissionRepo, chatRepo, profileService, chatHub)
+	memberCardService := service.NewMemberCardService(memberCardRepo, clubRepo, userRepo, mailer, s.logger)
 	registrationService := service.NewRegistrationService(
-		userRepo, clubRepo, chatRepo, requestRepo, emailInviteRepo, mailer, s.cfg.AppPublicURL, s.cfg.InviteTTL,
+		userRepo, clubRepo, chatRepo, requestRepo, emailInviteRepo, memberCardService, mailer, s.logger, s.cfg.AppPublicURL, s.cfg.InviteTTL,
 	)
 	clubRegistrationService := service.NewClubRegistrationService(
 		clubRegistrationRepo, userRepo, clubRepo, adminService, mailer, tokenManager,
@@ -123,6 +125,7 @@ func (s *Server) buildRouter() (chi.Router, *scheduler.BirthdayScheduler, error)
 	passwordResetHandler := handler.NewPasswordResetHandler(passwordResetService, s.logger)
 	donationHandler := handler.NewDonationHandler(donationService)
 	clubDueHandler := handler.NewClubDueHandler(clubDueService)
+	memberCardHandler := handler.NewMemberCardHandler(memberCardService)
 	eventHandler := handler.NewPublicEventHandler(eventService)
 	siteContentHandler := handler.NewSiteContentHandler(siteContentService)
 	adminHandler := handler.NewAdminHandler(adminService)
@@ -253,6 +256,11 @@ func (s *Server) buildRouter() (chi.Router, *scheduler.BirthdayScheduler, error)
 				admin.Get("/club-registration-requests/{requestID}", clubRegistrationHandler.Get)
 				admin.Post("/club-registration-requests/{requestID}/approve", clubRegistrationHandler.Approve)
 				admin.Post("/club-registration-requests/{requestID}/reject", clubRegistrationHandler.Reject)
+
+				admin.Get("/member-cards", memberCardHandler.List)
+				admin.Post("/member-cards/issue-missing", memberCardHandler.IssueMissing)
+				admin.Post("/member-cards/send-pending", memberCardHandler.SendPending)
+				admin.Post("/member-cards/{cardID}/send", memberCardHandler.SendOne)
 			})
 
 			protected.Route("/clubs/{clubID}", func(club chi.Router) {

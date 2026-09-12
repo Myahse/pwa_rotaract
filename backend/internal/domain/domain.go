@@ -64,6 +64,18 @@ type ClubMembership struct {
 	Club       *Club          `json:"club,omitempty"`
 }
 
+type MemberCard struct {
+	ID         uuid.UUID  `json:"id"`
+	ClubID     uuid.UUID  `json:"club_id"`
+	UserID     uuid.UUID  `json:"user_id"`
+	CardNumber string     `json:"card_number"`
+	IssuedAt   time.Time  `json:"issued_at"`
+	SentAt     *time.Time `json:"sent_at,omitempty"`
+	SentBy     *uuid.UUID `json:"sent_by,omitempty"`
+	User       *User      `json:"user,omitempty"`
+	Club       *Club      `json:"club,omitempty"`
+}
+
 type Permission struct {
 	ID          uuid.UUID `json:"id"`
 	Key         string    `json:"key"`

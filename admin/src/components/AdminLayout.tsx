@@ -1,6 +1,6 @@
 import { Link, Outlet, useLocation } from 'react-router-dom'
 import { useAuth } from '../auth/AuthContext'
-import { IconAccess, IconCalendar, IconClubs, IconDashboard, IconDonate, IconRegister, IconWebsite } from './Icons'
+import { IconAccess, IconCalendar, IconCard, IconClubs, IconDashboard, IconDonate, IconRegister, IconWebsite } from './Icons'
 import { ExternalServiceLinks } from './ExternalServiceLinks'
 
 const nav = [
@@ -10,6 +10,7 @@ const nav = [
   { to: '/website-home', label: 'Accueil site', short: 'Site', icon: IconWebsite, match: (p: string) => p.startsWith('/website-home') },
   { to: '/access-requests', label: "Demandes d'accès", short: 'Accès', icon: IconAccess, match: (p: string) => p.startsWith('/access-requests') },
   { to: '/donations', label: 'Dons', short: 'Dons', icon: IconDonate, match: (p: string) => p.startsWith('/donations') },
+  { to: '/member-cards', label: 'Cartes membre', short: 'Cartes', icon: IconCard, match: (p: string) => p.startsWith('/member-cards') },
   { to: '/club-registrations', label: 'Nouveaux clubs', short: 'Clubs+', icon: IconRegister, match: (p: string) => p.startsWith('/club-registrations') },
 ]
 
