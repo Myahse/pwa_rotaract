@@ -2,6 +2,7 @@ package handler
 
 import (
 	"errors"
+	"log/slog"
 	"net/http"
 
 	"github.com/rotaract-civ/backend/internal/authctx"
@@ -12,10 +13,11 @@ import (
 type ProfileHandler struct {
 	profiles *service.ProfileService
 	clubs    *repository.ClubRepository
+	logger   *slog.Logger
 }
 
-func NewProfileHandler(profiles *service.ProfileService, clubs *repository.ClubRepository) *ProfileHandler {
-	return &ProfileHandler{profiles: profiles, clubs: clubs}
+func NewProfileHandler(profiles *service.ProfileService, clubs *repository.ClubRepository, logger *slog.Logger) *ProfileHandler {
+	return &ProfileHandler{profiles: profiles, clubs: clubs, logger: logger}
 }
 
 func (h *ProfileHandler) GetMe(w http.ResponseWriter, r *http.Request) {
@@ -43,6 +45,7 @@ func (h *ProfileHandler) ListMyClubs(w http.ResponseWriter, r *http.Request) {
 
 	memberships, err := h.clubs.ListMembershipsByUser(r.Context(), user.ID)
 	if err != nil {
+		h.logger.Error("list user clubs failed", "user_id", user.ID, "err", err)
 		WriteError(w, http.StatusInternalServerError, "failed to load clubs")
 		return
 	}

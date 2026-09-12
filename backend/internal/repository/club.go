@@ -295,7 +295,9 @@ func (r *ClubRepository) ListMembershipsByUser(ctx context.Context, userID uuid.
 		var club domain.Club
 		if err := rows.Scan(
 			&membership.ID, &membership.ClubID, &membership.UserID, &membership.MemberRole, &membership.JoinedAt,
-			&club.ID, &club.Name, &club.Slug, &club.InviteCode, &club.Description, &club.City,
+			&club.ID, &club.Name, &club.Slug, &club.InviteCode, &club.Description,
+			&club.Country, &club.City, &club.Commune,
+			&club.LogoPath, &club.FoundedAt,
 			&club.IsActive, &club.CreatedBy, &club.CreatedAt, &club.UpdatedAt,
 		); err != nil {
 			return nil, fmt.Errorf("scan user membership: %w", err)
