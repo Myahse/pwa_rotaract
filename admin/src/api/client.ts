@@ -11,9 +11,10 @@ function normalizeApiBase(raw: string): string {
 }
 
 function resolveApiBase(): string {
+  // Production builds always call Render directly (Vercel VITE_API_BASE overrides caused 404s).
+  if (import.meta.env.PROD) return PRODUCTION_API
   const fromEnv = import.meta.env.VITE_API_BASE as string | undefined
   if (fromEnv?.trim()) return normalizeApiBase(fromEnv)
-  if (import.meta.env.PROD) return PRODUCTION_API
   return '/api/v1'
 }
 
@@ -59,7 +60,7 @@ async function parseError(res: Response, body: string): Promise<string> {
     return 'Réponse HTML inattendue — vérifiez le proxy API (Vercel /api ou VITE_API_BASE).'
   }
   if (body.trim() === '404 page not found') {
-    return 'Route API introuvable — vérifiez VITE_API_BASE (doit pointer vers …/api/v1).'
+    return `Route API introuvable (${res.url}). Redéployez l’admin ou contactez le support.`
   }
   try {
     const parsed = JSON.parse(body) as ApiError

@@ -11,9 +11,9 @@ function normalizeApiBase(raw: string): string {
 }
 
 function resolveApiBase(): string {
+  if (import.meta.env.PROD) return PRODUCTION_API
   const fromEnv = import.meta.env.VITE_API_BASE as string | undefined
   if (fromEnv?.trim()) return normalizeApiBase(fromEnv)
-  if (import.meta.env.PROD) return PRODUCTION_API
   return '/api/v1'
 }
 
