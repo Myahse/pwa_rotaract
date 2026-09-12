@@ -206,6 +206,41 @@ type AssignRoleInput struct {
 	RoleID uuid.UUID `json:"role_id"`
 }
 
+func (s *ClubService) GetClubAccess(ctx context.Context, clubID, userID uuid.UUID) (*domain.ClubAccessSummary, error) {
+	membership, err := s.clubs.GetMembership(ctx, clubID, userID)
+	if err != nil {
+		return nil, err
+	}
+	assignments, err := s.clubs.ListUserRoleAssignments(ctx, clubID, userID)
+	if err != nil {
+		return nil, err
+	}
+	permissions, err := s.clubs.ListUserPermissions(ctx, clubID, userID)
+	if err != nil {
+		return nil, err
+	}
+	roles := make([]domain.ClubRole, 0, len(assignments))
+	for _, item := range assignments {
+		if item.Role != nil {
+			roles = append(roles, *item.Role)
+		}
+	}
+	commissions, err := s.commissions.ListByUserInClub(ctx, clubID, userID)
+	if err != nil {
+		return nil, err
+	}
+	return &domain.ClubAccessSummary{
+		MemberRole:  membership.MemberRole,
+		Roles:       roles,
+		Permissions: permissions,
+		Commissions: commissions,
+	}, nil
+}
+
+func (s *ClubService) ListRoleAssignments(ctx context.Context, clubID uuid.UUID) ([]domain.ClubMemberRoleAssignment, error) {
+	return s.clubs.ListRoleAssignments(ctx, clubID)
+}
+
 func (s *ClubService) AssignRole(ctx context.Context, actorID, clubID, userID uuid.UUID, input AssignRoleInput) error {
 	if _, err := s.clubs.GetMembership(ctx, clubID, userID); err != nil {
 		return err

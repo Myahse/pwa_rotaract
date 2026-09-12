@@ -36,6 +36,39 @@ export type ClubRole = {
   description?: string
 }
 
+export type UserCommissionAccess = {
+  commission_id: string
+  commission_name: string
+  member_role: 'president' | 'secretary' | 'member'
+}
+
+export type ClubAccessSummary = {
+  member_role: 'head' | 'member'
+  roles: ClubRole[]
+  permissions: string[]
+  commissions: UserCommissionAccess[]
+}
+
+export type ClubRoleAssignment = {
+  id: string
+  club_id: string
+  user_id: string
+  club_role_id: string
+  role?: ClubRole
+}
+
+export type ClubDuePayment = {
+  id: string
+  club_id: string
+  user_id: string
+  due_month: string
+  amount_xof: number
+  status: 'pending' | 'received'
+  receipt_url?: string
+  created_at: string
+  user?: User
+}
+
 export type ClubMember = {
   id: string
   club_id: string

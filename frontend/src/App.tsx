@@ -2,6 +2,7 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 import type { ReactNode } from 'react'
 import { AuthProvider, useAuth } from './auth/AuthContext'
 import { AppLayout } from './components/AppLayout'
+import { ClubAccessRoute } from './components/ClubAccessRoute'
 import { ProtectedRoute } from './components/ProtectedRoute'
 import { AccessRequestPage } from './pages/AccessRequestPage'
 import { ChatPage } from './pages/ChatPage'
@@ -11,6 +12,7 @@ import { LoginPage } from './pages/LoginPage'
 import { RegisterPage } from './pages/RegisterPage'
 import { ProfilePage } from './pages/ProfilePage'
 import { HeadManagePage } from './pages/HeadManagePage'
+import { CotisationsPage } from './pages/CotisationsPage'
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage'
 import { ResetPasswordPage } from './pages/ResetPasswordPage'
 import { ClubRegisterCompletePage } from './pages/ClubRegisterCompletePage'
@@ -37,8 +39,9 @@ export default function App() {
           <Route element={<AppLayout />}>
             <Route path="home" element={<HomePage />} />
             <Route path="profile" element={<ProfilePage />} />
-            <Route path="clubs/:clubId" element={<ClubPage />} />
-            <Route path="clubs/:clubId/manage" element={<HeadManagePage />} />
+            <Route path="clubs/:clubId" element={<ClubAccessRoute section="club"><ClubPage /></ClubAccessRoute>} />
+            <Route path="clubs/:clubId/manage" element={<ClubAccessRoute section="manage"><HeadManagePage /></ClubAccessRoute>} />
+            <Route path="clubs/:clubId/cotisations" element={<ClubAccessRoute section="cotisations"><CotisationsPage /></ClubAccessRoute>} />
             <Route path="chat/:groupId" element={<ChatPage />} />
           </Route>
         </Route>

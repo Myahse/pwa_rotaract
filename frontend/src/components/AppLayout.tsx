@@ -1,9 +1,9 @@
 import { Link, Outlet, useLocation } from 'react-router-dom'
-import { Building2, House, UserCircle } from 'lucide-react'
+import { Building2, Coins, House, Settings2, UserCircle } from 'lucide-react'
 import { useAuth } from '../auth/AuthContext'
 
 export function AppLayout() {
-  const { user, clubs, activeClubId, logout, selectClub } = useAuth()
+  const { user, clubs, activeClubId, logout, selectClub, uiCaps } = useAuth()
   const location = useLocation()
   const activeClub = clubs.find((c) => c.club_id === activeClubId)
 
@@ -34,7 +34,10 @@ export function AppLayout() {
               ))}
             </select>
           )}
-          <span className="user-chip">{user?.first_name}</span>
+          <span className="user-chip">
+            {user?.first_name}
+            {uiCaps.profile !== 'member' || uiCaps.profileLabel !== 'Membre' ? ` · ${uiCaps.profileLabel}` : ''}
+          </span>
           <button type="button" className="btn-ghost" onClick={logout}>
             Déconnexion
           </button>
@@ -42,20 +45,48 @@ export function AppLayout() {
       </header>
 
       <nav className="bottom-nav">
-        <Link to="/home" className={location.pathname === '/home' ? 'active' : ''}>
-          <House className="nav-icon" aria-hidden="true" />
-          <span>Accueil</span>
-        </Link>
-        {activeClubId && (
-          <Link to={`/clubs/${activeClubId}`} className={location.pathname.includes('/clubs/') ? 'active' : ''}>
-            <Building2 className="nav-icon" aria-hidden="true" />
-            <span>Club</span>
+        {uiCaps.nav.home && (
+          <Link to="/home" className={location.pathname === '/home' ? 'active' : ''}>
+            <House className="nav-icon" aria-hidden="true" />
+            <span>Accueil</span>
           </Link>
         )}
-        <Link to="/profile" className={location.pathname === '/profile' ? 'active' : ''}>
-          <UserCircle className="nav-icon" aria-hidden="true" />
-          <span>Profil</span>
-        </Link>
+        {activeClubId && uiCaps.nav.club && (
+          <Link
+            to={`/clubs/${activeClubId}`}
+            className={
+              location.pathname.startsWith(`/clubs/${activeClubId}`)
+              && !location.pathname.includes('/manage')
+              && !location.pathname.includes('/cotisations')
+                ? 'active'
+                : ''
+            }
+          >
+            <Building2 className="nav-icon" aria-hidden="true" />
+            <span>{uiCaps.profile === 'commission_president' ? 'Commission' : 'Club'}</span>
+          </Link>
+        )}
+        {activeClubId && uiCaps.nav.cotisations && (
+          <Link
+            to={`/clubs/${activeClubId}/cotisations`}
+            className={location.pathname.includes('/cotisations') ? 'active' : ''}
+          >
+            <Coins className="nav-icon" aria-hidden="true" />
+            <span>Cotisations</span>
+          </Link>
+        )}
+        {activeClubId && uiCaps.nav.manage && (
+          <Link to={`/clubs/${activeClubId}/manage`} className={location.pathname.includes('/manage') ? 'active' : ''}>
+            <Settings2 className="nav-icon" aria-hidden="true" />
+            <span>Gérer</span>
+          </Link>
+        )}
+        {uiCaps.nav.profile && (
+          <Link to="/profile" className={location.pathname === '/profile' ? 'active' : ''}>
+            <UserCircle className="nav-icon" aria-hidden="true" />
+            <span>Profil</span>
+          </Link>
+        )}
       </nav>
       <main className="app-main">
         <Outlet />

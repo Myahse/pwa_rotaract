@@ -195,6 +195,24 @@ func (s *LocalStore) ensureParentDir(fullPath string) error {
 	return os.MkdirAll(filepath.Dir(fullPath), 0o755)
 }
 
+func (s *LocalStore) SaveClubDueReceipt(dueID, ext string, reader io.Reader) (string, error) {
+	relativePath := filepath.ToSlash(filepath.Join("club-dues", dueID+ext))
+	fullPath := filepath.Join(s.rootDir, relativePath)
+	if err := s.ensureParentDir(fullPath); err != nil {
+		return "", fmt.Errorf("create club due dir: %w", err)
+	}
+	file, err := os.Create(fullPath)
+	if err != nil {
+		return "", fmt.Errorf("create club due receipt: %w", err)
+	}
+	defer file.Close()
+	if _, err := io.Copy(file, reader); err != nil {
+		_ = os.Remove(fullPath)
+		return "", fmt.Errorf("write club due receipt: %w", err)
+	}
+	return relativePath, nil
+}
+
 func (s *LocalStore) SaveDonationReceipt(donationID, ext string, reader io.Reader) (string, error) {
 	relativePath := filepath.ToSlash(filepath.Join("donations", donationID+ext))
 	fullPath := filepath.Join(s.rootDir, relativePath)

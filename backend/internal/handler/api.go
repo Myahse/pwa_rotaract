@@ -225,6 +225,39 @@ func (h *ClubHandler) AssignRole(w http.ResponseWriter, r *http.Request) {
 	WriteJSON(w, http.StatusOK, map[string]string{"status": "assigned"})
 }
 
+func (h *ClubHandler) ListRoleAssignments(w http.ResponseWriter, r *http.Request) {
+	clubID, err := ClubIDFromRequest(r)
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	items, err := h.clubs.ListRoleAssignments(r.Context(), clubID)
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "failed to list role assignments")
+		return
+	}
+	WriteJSON(w, http.StatusOK, items)
+}
+
+func (h *ClubHandler) GetMyClubAccess(w http.ResponseWriter, r *http.Request) {
+	user, ok := authctx.UserFromContext(r.Context())
+	if !ok {
+		WriteError(w, http.StatusUnauthorized, "authentication required")
+		return
+	}
+	clubID, err := ClubIDFromRequest(r)
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	access, err := h.clubs.GetClubAccess(r.Context(), clubID, user.ID)
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "failed to load club access")
+		return
+	}
+	WriteJSON(w, http.StatusOK, access)
+}
+
 func (h *ClubHandler) CreateCommission(w http.ResponseWriter, r *http.Request) {
 	user, ok := authctx.UserFromContext(r.Context())
 	if !ok {
@@ -362,6 +395,30 @@ func (h *ChatHandler) CreateCommissionGroup(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
+	WriteJSON(w, http.StatusCreated, group)
+}
+
+func (h *ChatHandler) CreateClubGroup(w http.ResponseWriter, r *http.Request) {
+	user, ok := authctx.UserFromContext(r.Context())
+	if !ok {
+		WriteError(w, http.StatusUnauthorized, "authentication required")
+		return
+	}
+	clubID, err := ClubIDFromRequest(r)
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	var input service.CreateClubGroupInput
+	if err := DecodeJSON(r, &input); err != nil {
+		WriteError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	group, err := h.chat.CreateClubGroup(r.Context(), user.ID, clubID, input)
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
 	WriteJSON(w, http.StatusCreated, group)
 }
 

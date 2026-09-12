@@ -123,6 +123,7 @@ type ChatGroupType string
 const (
 	ChatGroupTypeClub       ChatGroupType = "club"
 	ChatGroupTypeCommission ChatGroupType = "commission"
+	ChatGroupTypeCustom     ChatGroupType = "custom"
 )
 
 type ChatGroup struct {
@@ -603,6 +604,35 @@ const (
 	DonationStatusPending  DonationStatus = "pending"
 	DonationStatusReceived DonationStatus = "received"
 )
+
+type ClubDuePayment struct {
+	ID          uuid.UUID      `json:"id"`
+	ClubID      uuid.UUID      `json:"club_id"`
+	UserID      uuid.UUID      `json:"user_id"`
+	DueMonth    string         `json:"due_month"`
+	AmountXOF   int            `json:"amount_xof"`
+	Status      DonationStatus `json:"status"`
+	ReceiptPath string         `json:"-"`
+	ReceiptMime string         `json:"receipt_mime,omitempty"`
+	ReceiptURL  *string        `json:"receipt_url,omitempty"`
+	ReviewedBy  *uuid.UUID     `json:"reviewed_by,omitempty"`
+	ReviewedAt  *time.Time     `json:"reviewed_at,omitempty"`
+	CreatedAt   time.Time      `json:"created_at"`
+	User        *User          `json:"user,omitempty"`
+}
+
+type UserCommissionAccess struct {
+	CommissionID   uuid.UUID            `json:"commission_id"`
+	CommissionName string               `json:"commission_name"`
+	MemberRole     CommissionMemberRole `json:"member_role"`
+}
+
+type ClubAccessSummary struct {
+	MemberRole  ClubMemberRole         `json:"member_role"`
+	Roles       []ClubRole             `json:"roles"`
+	Permissions []string               `json:"permissions"`
+	Commissions []UserCommissionAccess `json:"commissions"`
+}
 
 type Donation struct {
 	ID          uuid.UUID      `json:"id"`

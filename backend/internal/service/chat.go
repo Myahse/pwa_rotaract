@@ -187,3 +187,47 @@ func (s *ChatService) CreateCommissionGroup(ctx context.Context, actorID, clubID
 
 	return group, nil
 }
+
+type CreateClubGroupInput struct {
+	Name      string      `json:"name"`
+	MemberIDs []uuid.UUID `json:"member_ids"`
+}
+
+func (s *ChatService) CreateClubGroup(ctx context.Context, actorID, clubID uuid.UUID, input CreateClubGroupInput) (*domain.ChatGroup, error) {
+	head, err := s.clubs.IsHead(ctx, clubID, actorID)
+	if err != nil {
+		return nil, err
+	}
+	if !head {
+		return nil, ErrChatAccessDenied
+	}
+
+	name := strings.TrimSpace(input.Name)
+	if name == "" {
+		return nil, fmt.Errorf("group name is required")
+	}
+
+	group := &domain.ChatGroup{
+		ClubID:    clubID,
+		GroupType: domain.ChatGroupTypeCustom,
+		Name:      name,
+		CreatedBy: &actorID,
+	}
+	if err := s.chat.CreateGroup(ctx, group); err != nil {
+		return nil, err
+	}
+
+	memberSet := map[uuid.UUID]struct{}{actorID: {}}
+	for _, id := range input.MemberIDs {
+		memberSet[id] = struct{}{}
+	}
+	for userID := range memberSet {
+		if _, err := s.clubs.GetMembership(ctx, clubID, userID); err != nil {
+			continue
+		}
+		if err := s.chat.AddMember(ctx, group.ID, userID); err != nil {
+			return nil, err
+		}
+	}
+	return group, nil
+}

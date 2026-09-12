@@ -448,6 +448,113 @@ func (r *ClubRepository) userIsAnyCommissionPresident(ctx context.Context, clubI
 	return exists, err
 }
 
+func (r *ClubRepository) ListRoleAssignments(ctx context.Context, clubID uuid.UUID) ([]domain.ClubMemberRoleAssignment, error) {
+	rows, err := r.pool.Query(ctx, `
+		SELECT a.id, a.club_id, a.user_id, a.club_role_id, a.assigned_by, a.assigned_at,
+		       r.id, r.club_id, r.name, r.description, r.is_system, r.created_at
+		FROM club_member_role_assignments a
+		JOIN club_roles r ON r.id = a.club_role_id
+		WHERE a.club_id = $1
+		ORDER BY a.assigned_at ASC
+	`, clubID)
+	if err != nil {
+		return nil, fmt.Errorf("list role assignments: %w", err)
+	}
+	defer rows.Close()
+
+	items := make([]domain.ClubMemberRoleAssignment, 0)
+	for rows.Next() {
+		var item domain.ClubMemberRoleAssignment
+		var role domain.ClubRole
+		var description *string
+		if err := rows.Scan(
+			&item.ID, &item.ClubID, &item.UserID, &item.ClubRoleID, &item.AssignedBy, &item.AssignedAt,
+			&role.ID, &role.ClubID, &role.Name, &description, &role.IsSystem, &role.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		role.Description = description
+		item.Role = &role
+		items = append(items, item)
+	}
+	return items, rows.Err()
+}
+
+func (r *ClubRepository) ListUserRoleAssignments(ctx context.Context, clubID, userID uuid.UUID) ([]domain.ClubMemberRoleAssignment, error) {
+	rows, err := r.pool.Query(ctx, `
+		SELECT a.id, a.club_id, a.user_id, a.club_role_id, a.assigned_by, a.assigned_at,
+		       r.id, r.club_id, r.name, r.description, r.is_system, r.created_at
+		FROM club_member_role_assignments a
+		JOIN club_roles r ON r.id = a.club_role_id
+		WHERE a.club_id = $1 AND a.user_id = $2
+		ORDER BY a.assigned_at ASC
+	`, clubID, userID)
+	if err != nil {
+		return nil, fmt.Errorf("list user role assignments: %w", err)
+	}
+	defer rows.Close()
+
+	items := make([]domain.ClubMemberRoleAssignment, 0)
+	for rows.Next() {
+		var item domain.ClubMemberRoleAssignment
+		var role domain.ClubRole
+		var description *string
+		if err := rows.Scan(
+			&item.ID, &item.ClubID, &item.UserID, &item.ClubRoleID, &item.AssignedBy, &item.AssignedAt,
+			&role.ID, &role.ClubID, &role.Name, &description, &role.IsSystem, &role.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		role.Description = description
+		item.Role = &role
+		items = append(items, item)
+	}
+	return items, rows.Err()
+}
+
+func (r *ClubRepository) ListUserPermissions(ctx context.Context, clubID, userID uuid.UUID) ([]string, error) {
+	if head, err := r.IsHead(ctx, clubID, userID); err != nil {
+		return nil, err
+	} else if head {
+		rows, err := r.pool.Query(ctx, `SELECT key FROM permissions ORDER BY key`)
+		if err != nil {
+			return nil, err
+		}
+		defer rows.Close()
+		keys := make([]string, 0)
+		for rows.Next() {
+			var key string
+			if err := rows.Scan(&key); err != nil {
+				return nil, err
+			}
+			keys = append(keys, key)
+		}
+		return keys, rows.Err()
+	}
+
+	rows, err := r.pool.Query(ctx, `
+		SELECT DISTINCT p.key
+		FROM club_member_role_assignments cmra
+		JOIN club_role_permissions crp ON crp.club_role_id = cmra.club_role_id
+		JOIN permissions p ON p.id = crp.permission_id
+		WHERE cmra.club_id = $1 AND cmra.user_id = $2
+		ORDER BY p.key
+	`, clubID, userID)
+	if err != nil {
+		return nil, fmt.Errorf("list user permissions: %w", err)
+	}
+	defer rows.Close()
+	keys := make([]string, 0)
+	for rows.Next() {
+		var key string
+		if err := rows.Scan(&key); err != nil {
+			return nil, err
+		}
+		keys = append(keys, key)
+	}
+	return keys, rows.Err()
+}
+
 func (r *ClubRepository) SeedHeadRole(ctx context.Context, clubID uuid.UUID) (*domain.ClubRole, error) {
 	role := &domain.ClubRole{
 		ClubID:      clubID,

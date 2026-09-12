@@ -189,6 +189,30 @@ func (r *CommissionRepository) CountPresidents(ctx context.Context, commissionID
 	return count, err
 }
 
+func (r *CommissionRepository) ListByUserInClub(ctx context.Context, clubID, userID uuid.UUID) ([]domain.UserCommissionAccess, error) {
+	rows, err := r.pool.Query(ctx, `
+		SELECT c.id, c.name, cm.member_role
+		FROM commission_memberships cm
+		JOIN commissions c ON c.id = cm.commission_id
+		WHERE c.club_id = $1 AND cm.user_id = $2
+		ORDER BY c.name ASC
+	`, clubID, userID)
+	if err != nil {
+		return nil, fmt.Errorf("list user commissions: %w", err)
+	}
+	defer rows.Close()
+
+	items := make([]domain.UserCommissionAccess, 0)
+	for rows.Next() {
+		var item domain.UserCommissionAccess
+		if err := rows.Scan(&item.CommissionID, &item.CommissionName, &item.MemberRole); err != nil {
+			return nil, fmt.Errorf("scan user commission: %w", err)
+		}
+		items = append(items, item)
+	}
+	return items, rows.Err()
+}
+
 func (r *CommissionRepository) CountSecretaries(ctx context.Context, commissionID uuid.UUID) (int, error) {
 	var count int
 	err := r.pool.QueryRow(ctx, `
