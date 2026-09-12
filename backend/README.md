@@ -104,6 +104,17 @@ go run ./cmd/import-tombola
 
 The import matches existing clubs by name and is safe to run again. Existing emails are not overwritten. Tombola passwords use a different hash format, so imported members must use the password-reset email before logging in.
 
+## Remove smoke / mock users
+
+After running `cmd/smoke` against a shared database, remove `@smoke.test` users while keeping admins and Tombola imports:
+
+```bash
+go run ./cmd/cleanup-mock -dry-run
+go run ./cmd/cleanup-mock
+```
+
+Optional: set `TOMBOLA_DATABASE_URL` so imported member emails are always kept.
+
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/api/v1/auth/me` | Current profile |
