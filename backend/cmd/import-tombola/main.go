@@ -135,7 +135,8 @@ func splitName(fullName string) (string, string) {
 }
 
 func temporaryPasswordHash() (string, error) {
-	raw := make([]byte, 32)
+	// bcrypt accepts at most 72 bytes; "migration-" + 32-byte hex would exceed that.
+	raw := make([]byte, 30)
 	if _, err := rand.Read(raw); err != nil {
 		return "", err
 	}
