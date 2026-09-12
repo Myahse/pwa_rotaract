@@ -35,6 +35,15 @@ export type CreateClubResult = {
   president: User
 }
 
+export type ClubMember = {
+  id: string
+  club_id: string
+  user_id: string
+  member_role: 'head' | 'member'
+  joined_at: string
+  user?: User
+}
+
 export type ClubDiaryEntryType = 'parrain' | 'president' | 'member'
 
 export type ClubDiaryEntry = {

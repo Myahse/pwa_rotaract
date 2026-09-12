@@ -555,6 +555,27 @@ code {
   margin-bottom: 0.35rem;
 }
 
+.member-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0;
+}
+.member-row {
+  padding: 0.85rem 0;
+  border-bottom: 1px solid var(--line);
+  display: grid;
+  gap: 0.2rem;
+}
+.member-row:last-child { border-bottom: 0; }
+.member-main {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
 .request-list { display: grid; gap: 0; }
 .request-card {
   background: transparent;

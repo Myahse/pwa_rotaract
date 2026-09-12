@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { apiRequest } from '../api/client'
-import type { Club } from '../api/types'
+import type { Club, ClubMember } from '../api/types'
 import { ClubDiaryPanel } from '../components/ClubDiaryPanel'
 import { useAuth } from '../auth/AuthContext'
 
@@ -23,7 +23,9 @@ export function ClubDetailPage() {
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
-  const [section, setSection] = useState<'info' | 'head' | 'diary'>('info')
+  const [members, setMembers] = useState<ClubMember[]>([])
+  const [membersLoading, setMembersLoading] = useState(false)
+  const [section, setSection] = useState<'info' | 'head' | 'members' | 'diary'>('info')
 
   useEffect(() => {
     if (!token || !clubId) return
@@ -42,6 +44,15 @@ export function ClubDetailPage() {
         })
       })
       .catch((err) => setError(err instanceof Error ? err.message : 'Erreur'))
+  }, [token, clubId])
+
+  useEffect(() => {
+    if (!token || !clubId) return
+    setMembersLoading(true)
+    apiRequest<ClubMember[]>(`/clubs/${clubId}/members`, {}, token)
+      .then(setMembers)
+      .catch((err) => setError(err instanceof Error ? err.message : 'Impossible de charger les membres'))
+      .finally(() => setMembersLoading(false))
   }, [token, clubId])
 
   async function onUpdateClub(e: FormEvent) {
@@ -142,6 +153,9 @@ export function ClubDetailPage() {
         <button type="button" className={`tab ${section === 'head' ? 'active' : ''}`} onClick={() => setSection('head')}>
           Président
         </button>
+        <button type="button" className={`tab ${section === 'members' ? 'active' : ''}`} onClick={() => setSection('members')}>
+          Membres{members.length > 0 ? ` (${members.length})` : ''}
+        </button>
         <button type="button" className={`tab ${section === 'diary' ? 'active' : ''}`} onClick={() => setSection('diary')}>
           Journal
         </button>
@@ -189,6 +203,55 @@ export function ClubDetailPage() {
           </div>
           <button type="submit" className="btn-primary" disabled={loading}>Créer le président</button>
         </form>
+      )}
+
+      {section === 'members' && (
+        <section className="panel stack">
+          <header className="row-between">
+            <div>
+              <h2>Membres du club</h2>
+              <p className="muted small">{members.length} membre{members.length !== 1 ? 's' : ''} inscrit{members.length !== 1 ? 's' : ''}</p>
+            </div>
+            <Link to={`/member-cards?club_id=${clubId}`} className="btn-small btn-outline">
+              Cartes membre
+            </Link>
+          </header>
+
+          {membersLoading ? (
+            <p className="muted">Chargement…</p>
+          ) : members.length === 0 ? (
+            <div className="empty-state">
+              <strong>Aucun membre</strong>
+              <p>Les membres apparaîtront ici après inscription ou approbation d&apos;une demande d&apos;accès.</p>
+            </div>
+          ) : (
+            <ul className="member-list">
+              {members.map((member) => (
+                <li key={member.id} className="member-row">
+                  <div className="member-main">
+                    <strong>
+                      {member.user?.first_name} {member.user?.last_name}
+                    </strong>
+                    <span className={`badge ${member.member_role === 'head' ? 'approved' : ''}`}>
+                      {member.member_role === 'head' ? 'Responsable' : 'Membre'}
+                    </span>
+                  </div>
+                  <p className="muted small">{member.user?.email}</p>
+                  <p className="muted small">
+                    {member.user?.phone ? `${member.user.phone} · ` : ''}
+                    Inscrit le {new Date(member.joined_at).toLocaleDateString('fr-FR')}
+                    {member.user?.member_since
+                      ? ` · Rotaract depuis ${new Date(member.user.member_since).toLocaleDateString('fr-FR')}`
+                      : ''}
+                  </p>
+                  {member.user?.profession && (
+                    <p className="muted small">{member.user.profession}</p>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
       )}
 
       {section === 'diary' && token && clubId && (

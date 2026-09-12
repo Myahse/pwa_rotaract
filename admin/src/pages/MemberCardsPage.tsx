@@ -1,14 +1,16 @@
 import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { apiRequest } from '../api/client'
 import type { Club, MemberCard, MemberCardListResponse } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
 
 export function MemberCardsPage() {
   const { token } = useAuth()
+  const [searchParams] = useSearchParams()
   const [clubs, setClubs] = useState<Club[]>([])
   const [items, setItems] = useState<MemberCard[]>([])
   const [pendingCount, setPendingCount] = useState(0)
-  const [clubFilter, setClubFilter] = useState('')
+  const [clubFilter, setClubFilter] = useState(searchParams.get('club_id') ?? '')
   const [pendingOnly, setPendingOnly] = useState(true)
   const [error, setError] = useState('')
   const [message, setMessage] = useState('')
