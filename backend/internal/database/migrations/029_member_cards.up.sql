@@ -1,4 +1,5 @@
-CREATE TABLE member_cards (
+-- +goose Up
+CREATE TABLE IF NOT EXISTS member_cards (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     club_id UUID NOT NULL REFERENCES clubs(id) ON DELETE CASCADE,
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -10,5 +11,5 @@ CREATE TABLE member_cards (
     UNIQUE (club_id, card_number)
 );
 
-CREATE INDEX idx_member_cards_club ON member_cards (club_id);
-CREATE INDEX idx_member_cards_unsent ON member_cards (club_id) WHERE sent_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_member_cards_club ON member_cards (club_id);
+CREATE INDEX IF NOT EXISTS idx_member_cards_unsent ON member_cards (club_id) WHERE sent_at IS NULL;
