@@ -213,6 +213,7 @@ func (s *ChatService) UpdateMessage(ctx context.Context, user *domain.User, grou
 	if s.profiles != nil && updated.User != nil {
 		updated.User = s.profiles.PublicUser(updated.User)
 	}
+	s.broadcastUpdated(groupID, *updated)
 	return updated, nil
 }
 
@@ -229,7 +230,11 @@ func (s *ChatService) DeleteMessage(ctx context.Context, user *domain.User, grou
 		return repository.ErrNotFound
 	}
 	if msg.UserID == user.ID || user.IsAdmin {
-		return s.chat.DeleteMessage(ctx, messageID)
+		if err := s.chat.DeleteMessage(ctx, messageID); err != nil {
+			return err
+		}
+		s.broadcastDeleted(groupID, messageID)
+		return nil
 	}
 
 	group, err := s.chat.GetByID(ctx, groupID)
@@ -241,7 +246,11 @@ func (s *ChatService) DeleteMessage(ctx context.Context, user *domain.User, grou
 		return err
 	}
 	if isHead {
-		return s.chat.DeleteMessage(ctx, messageID)
+		if err := s.chat.DeleteMessage(ctx, messageID); err != nil {
+			return err
+		}
+		s.broadcastDeleted(groupID, messageID)
+		return nil
 	}
 	return ErrMessageForbidden
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -140,4 +141,99 @@ func (r *ChatRepository) UserCanAccessGroup(ctx context.Context, groupID, userID
 		)
 	`, groupID, userID).Scan(&exists)
 	return exists, err
+}
+
+func (r *ChatRepository) CountMembers(ctx context.Context, groupID uuid.UUID) (int, error) {
+	var count int
+	err := r.pool.QueryRow(ctx, `
+		SELECT COUNT(*)::int FROM chat_group_members WHERE group_id = $1
+	`, groupID).Scan(&count)
+	if err != nil {
+		return 0, fmt.Errorf("count chat members: %w", err)
+	}
+	return count, nil
+}
+
+func (r *ChatRepository) RemoveMember(ctx context.Context, groupID, userID uuid.UUID) error {
+	tag, err := r.pool.Exec(ctx, `
+		DELETE FROM chat_group_members WHERE group_id = $1 AND user_id = $2
+	`, groupID, userID)
+	if err != nil {
+		return fmt.Errorf("remove chat member: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+func (r *ChatRepository) FindDirectGroup(ctx context.Context, clubID, userA, userB uuid.UUID) (*domain.ChatGroup, error) {
+	var group domain.ChatGroup
+	err := r.pool.QueryRow(ctx, `
+		SELECT g.id, g.club_id, g.commission_id, g.group_type, g.name, g.created_by, g.created_at
+		FROM chat_groups g
+		WHERE g.club_id = $1
+		  AND g.group_type = 'custom'
+		  AND EXISTS (SELECT 1 FROM chat_group_members WHERE group_id = g.id AND user_id = $2)
+		  AND EXISTS (SELECT 1 FROM chat_group_members WHERE group_id = g.id AND user_id = $3)
+		  AND (SELECT COUNT(*) FROM chat_group_members WHERE group_id = g.id) = 2
+		LIMIT 1
+	`, clubID, userA, userB).Scan(
+		&group.ID, &group.ClubID, &group.CommissionID, &group.GroupType, &group.Name, &group.CreatedBy, &group.CreatedAt,
+	)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, ErrNotFound
+	}
+	if err != nil {
+		return nil, fmt.Errorf("find direct chat group: %w", err)
+	}
+	return &group, nil
+}
+
+func (r *ChatRepository) ListInboxForUser(ctx context.Context, clubID, userID uuid.UUID) ([]domain.ChatInboxGroup, error) {
+	rows, err := r.pool.Query(ctx, `
+		SELECT g.id, g.club_id, g.commission_id, g.group_type, g.name, g.created_by, g.created_at,
+		       lm.content, lm.created_at,
+		       (SELECT COUNT(*)::int FROM chat_group_members WHERE group_id = g.id) AS member_count
+		FROM chat_groups g
+		LEFT JOIN LATERAL (
+			SELECT content, created_at
+			FROM chat_messages
+			WHERE group_id = g.id
+			ORDER BY created_at DESC
+			LIMIT 1
+		) lm ON true
+		WHERE g.club_id = $1
+		  AND (
+		    g.group_type = 'club'
+		    OR EXISTS (
+		      SELECT 1 FROM chat_group_members cgm
+		      WHERE cgm.group_id = g.id AND cgm.user_id = $2
+		    )
+		  )
+		ORDER BY COALESCE(lm.created_at, g.created_at) DESC
+	`, clubID, userID)
+	if err != nil {
+		return nil, fmt.Errorf("list chat inbox: %w", err)
+	}
+	defer rows.Close()
+
+	items := make([]domain.ChatInboxGroup, 0)
+	for rows.Next() {
+		var item domain.ChatInboxGroup
+		var lastContent *string
+		var lastAt *time.Time
+		if err := rows.Scan(
+			&item.ID, &item.ClubID, &item.CommissionID, &item.GroupType, &item.Name, &item.CreatedBy, &item.CreatedAt,
+			&lastContent, &lastAt,
+			&item.MemberCount,
+		); err != nil {
+			return nil, fmt.Errorf("scan chat inbox row: %w", err)
+		}
+		item.LastMessageContent = lastContent
+		item.LastMessageAt = lastAt
+		item.IsDirect = item.GroupType == domain.ChatGroupTypeCustom && item.MemberCount == 2
+		items = append(items, item)
+	}
+	return items, rows.Err()
 }

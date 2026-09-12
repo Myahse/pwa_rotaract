@@ -18,6 +18,7 @@ export type ClubUiCaps = {
   nav: {
     home: boolean
     club: boolean
+    messages: boolean
     cotisations: boolean
     manage: boolean
     profile: boolean
@@ -69,7 +70,7 @@ export function resolveClubUiCaps(
   const fullMember: ClubUiCaps = {
     profile: 'member',
     profileLabel: 'Membre',
-    nav: { home: true, club: true, cotisations: true, manage: false, profile: true },
+    nav: { home: true, club: true, messages: true, cotisations: true, manage: false, profile: true },
     clubView: 'full',
     manageSections: {
       members: false,
@@ -97,7 +98,7 @@ export function resolveClubUiCaps(
     return {
       profile: 'head',
       profileLabel: 'Responsable',
-      nav: { home: true, club: true, cotisations: true, manage: true, profile: true },
+      nav: { home: true, club: true, messages: true, cotisations: true, manage: true, profile: true },
       clubView: 'full',
       manageSections: {
         members: true,
@@ -118,7 +119,7 @@ export function resolveClubUiCaps(
     return {
       profile: 'treasurer',
       profileLabel: 'Trésorier',
-      nav: { home: true, club: false, cotisations: true, manage: false, profile: true },
+      nav: { home: true, club: false, messages: true, cotisations: true, manage: false, profile: true },
       clubView: 'hidden',
       manageSections: {
         members: false,
@@ -139,7 +140,7 @@ export function resolveClubUiCaps(
     return {
       profile: 'secretary',
       profileLabel: 'Secrétaire',
-      nav: { home: true, club: false, cotisations: false, manage: true, profile: true },
+      nav: { home: true, club: false, messages: true, cotisations: false, manage: true, profile: true },
       clubView: 'hidden',
       manageSections: {
         members: true,
@@ -160,7 +161,7 @@ export function resolveClubUiCaps(
     return {
       profile: 'commission_president',
       profileLabel: 'Président de commission',
-      nav: { home: true, club: true, cotisations: false, manage: false, profile: true },
+      nav: { home: true, club: true, messages: true, cotisations: false, manage: false, profile: true },
       clubView: 'groups_only',
       manageSections: {
         members: false,

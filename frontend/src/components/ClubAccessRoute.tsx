@@ -2,7 +2,7 @@ import { Navigate } from 'react-router-dom'
 import type { ReactNode } from 'react'
 import { useAuth } from '../auth/AuthContext'
 
-type Section = 'club' | 'manage' | 'cotisations'
+type Section = 'club' | 'manage' | 'cotisations' | 'messages'
 
 export function ClubAccessRoute({ section, children }: { section: Section; children: ReactNode }) {
   const { uiCaps, activeClubId } = useAuth()
@@ -10,6 +10,7 @@ export function ClubAccessRoute({ section, children }: { section: Section; child
   const allowed =
     section === 'club' ? uiCaps.nav.club
     : section === 'manage' ? uiCaps.nav.manage
+    : section === 'messages' ? uiCaps.nav.messages
     : uiCaps.nav.cotisations
 
   if (!allowed) {

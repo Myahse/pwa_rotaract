@@ -1,40 +1,103 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react'
-import { useParams } from 'react-router-dom'
+import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
+import { Link, useParams } from 'react-router-dom'
 import { apiRequest } from '../api/client'
-import type { ChatMessage } from '../api/types'
+import type { ChatGroup, ChatMessage } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
+
+function upsertMessage(list: ChatMessage[], message: ChatMessage): ChatMessage[] {
+  const idx = list.findIndex((m) => m.id === message.id)
+  if (idx >= 0) {
+    const next = [...list]
+    next[idx] = message
+    return next
+  }
+  return [...list, message]
+}
 
 export function ChatPage() {
   const { groupId } = useParams<{ groupId: string }>()
-  const { token, user } = useAuth()
+  const { token, user, activeClubId } = useAuth()
+  const [group, setGroup] = useState<ChatGroup | null>(null)
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [content, setContent] = useState('')
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editText, setEditText] = useState('')
   const [error, setError] = useState('')
+  const [connected, setConnected] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
+  const wsRef = useRef<WebSocket | null>(null)
+  const reconnectTimer = useRef<number | null>(null)
+
+  const loadMessages = useCallback(async () => {
+    if (!token || !groupId) return
+    const res = await apiRequest<{ messages: ChatMessage[] }>(`/chat/groups/${groupId}/messages`, {}, token)
+    setMessages(res.messages)
+  }, [token, groupId])
 
   useEffect(() => {
     if (!token || !groupId) return
-    apiRequest<{ messages: ChatMessage[] }>(`/chat/groups/${groupId}/messages`, {}, token)
-      .then((res) => setMessages([...res.messages].reverse()))
+    apiRequest<{ group: ChatGroup }>(`/chat/groups/${groupId}`, {}, token)
+      .then((res) => setGroup(res.group))
       .catch((err) => setError(err instanceof Error ? err.message : 'Erreur'))
-  }, [token, groupId])
+    loadMessages().catch((err) => setError(err instanceof Error ? err.message : 'Erreur'))
+  }, [token, groupId, loadMessages])
 
   useEffect(() => {
     if (!token || !groupId) return
-    const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws'
-    const ws = new WebSocket(`${protocol}://${window.location.host}/api/v1/ws/chat?token=${token}&group_id=${groupId}`)
-    ws.onmessage = (event) => {
-      try {
-        const payload = JSON.parse(event.data) as { type: string; message: ChatMessage }
-        if (payload.type === 'message') {
-          setMessages((prev) => [...prev, payload.message])
-        }
-      } catch { /* ignore */ }
+
+    let closed = false
+    let attempt = 0
+
+    function connect() {
+      if (closed) return
+      const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws'
+      const ws = new WebSocket(`${protocol}://${window.location.host}/api/v1/ws/chat?token=${token}&group_id=${groupId}`)
+      wsRef.current = ws
+
+      ws.onopen = () => {
+        attempt = 0
+        setConnected(true)
+        void loadMessages()
+      }
+
+      ws.onmessage = (event) => {
+        try {
+          const payload = JSON.parse(event.data) as {
+            type: string
+            message?: ChatMessage
+            message_id?: string
+          }
+          if (payload.type === 'message' || payload.type === 'message_updated') {
+            if (payload.message) {
+              setMessages((prev) => upsertMessage(prev, payload.message!))
+            }
+            return
+          }
+          if (payload.type === 'message_deleted' && payload.message_id) {
+            setMessages((prev) => prev.filter((m) => m.id !== payload.message_id))
+          }
+        } catch { /* ignore */ }
+      }
+
+      ws.onclose = () => {
+        setConnected(false)
+        if (closed) return
+        attempt += 1
+        const delay = Math.min(1000 * 2 ** attempt, 15000)
+        reconnectTimer.current = window.setTimeout(connect, delay)
+      }
+
+      ws.onerror = () => ws.close()
     }
-    return () => ws.close()
-  }, [token, groupId])
+
+    connect()
+
+    return () => {
+      closed = true
+      if (reconnectTimer.current) window.clearTimeout(reconnectTimer.current)
+      wsRef.current?.close()
+    }
+  }, [token, groupId, loadMessages])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -50,10 +113,7 @@ export function ChatPage() {
         method: 'POST',
         body: JSON.stringify({ content: text }),
       }, token)
-      setMessages((prev) => {
-        if (prev.some((m) => m.id === msg.id)) return prev
-        return [...prev, msg]
-      })
+      setMessages((prev) => upsertMessage(prev, msg))
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Envoi impossible')
     }
@@ -76,7 +136,7 @@ export function ChatPage() {
         method: 'PATCH',
         body: JSON.stringify({ content: editText.trim() }),
       }, token)
-      setMessages((prev) => prev.map((m) => (m.id === id ? updated : m)))
+      setMessages((prev) => upsertMessage(prev, updated))
       setEditingId(null)
       setEditText('')
     } catch (err) {
@@ -84,8 +144,17 @@ export function ChatPage() {
     }
   }
 
+  const backLink = activeClubId ? `/clubs/${activeClubId}/messages` : '/home'
+
   return (
     <div className="chat-page">
+      <div className="chat-header">
+        <Link to={backLink} className="back">← Messages</Link>
+        <div>
+          <h2>{group?.name ?? 'Discussion'}</h2>
+          <p className="muted small">{connected ? 'En ligne' : 'Reconnexion…'}</p>
+        </div>
+      </div>
       {error && <p className="error">{error}</p>}
       <div className="chat-messages">
         {messages.map((m) => (

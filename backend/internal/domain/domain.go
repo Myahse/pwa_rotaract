@@ -148,6 +148,14 @@ type ChatGroup struct {
 	CreatedAt    time.Time      `json:"created_at"`
 }
 
+type ChatInboxGroup struct {
+	ChatGroup
+	MemberCount        int        `json:"member_count"`
+	IsDirect           bool       `json:"is_direct"`
+	LastMessageContent *string    `json:"last_message_content,omitempty"`
+	LastMessageAt      *time.Time `json:"last_message_at,omitempty"`
+}
+
 type ChatGroupMember struct {
 	ID       uuid.UUID `json:"id"`
 	GroupID  uuid.UUID `json:"group_id"`

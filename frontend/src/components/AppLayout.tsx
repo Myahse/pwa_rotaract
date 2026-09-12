@@ -1,5 +1,5 @@
 import { Link, Outlet, useLocation } from 'react-router-dom'
-import { Building2, Coins, House, Settings2, UserCircle } from 'lucide-react'
+import { Building2, Coins, House, MessageSquare, Settings2, UserCircle } from 'lucide-react'
 import { useAuth } from '../auth/AuthContext'
 
 export function AppLayout() {
@@ -58,12 +58,22 @@ export function AppLayout() {
               location.pathname.startsWith(`/clubs/${activeClubId}`)
               && !location.pathname.includes('/manage')
               && !location.pathname.includes('/cotisations')
+              && !location.pathname.includes('/messages')
                 ? 'active'
                 : ''
             }
           >
             <Building2 className="nav-icon" aria-hidden="true" />
             <span>{uiCaps.profile === 'commission_president' ? 'Commission' : 'Club'}</span>
+          </Link>
+        )}
+        {activeClubId && uiCaps.nav.messages && (
+          <Link
+            to={`/clubs/${activeClubId}/messages`}
+            className={location.pathname.includes('/messages') || location.pathname.startsWith('/chat/') ? 'active' : ''}
+          >
+            <MessageSquare className="nav-icon" aria-hidden="true" />
+            <span>Messages</span>
           </Link>
         )}
         {activeClubId && uiCaps.nav.cotisations && (

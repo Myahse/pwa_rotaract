@@ -141,9 +141,16 @@ export type ChatGroup = {
   id: string
   club_id: string
   commission_id?: string
-  group_type: 'club' | 'commission'
+  group_type: 'club' | 'commission' | 'custom'
   name: string
   created_at: string
+}
+
+export type ChatInboxGroup = ChatGroup & {
+  member_count: number
+  is_direct: boolean
+  last_message_content?: string | null
+  last_message_at?: string | null
 }
 
 export type ChatMessage = {

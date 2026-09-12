@@ -6,6 +6,7 @@ import { ClubAccessRoute } from './components/ClubAccessRoute'
 import { ProtectedRoute } from './components/ProtectedRoute'
 import { AccessRequestPage } from './pages/AccessRequestPage'
 import { ChatPage } from './pages/ChatPage'
+import { MessagesInboxPage } from './pages/MessagesInboxPage'
 import { ClubPage } from './pages/ClubPage'
 import { HomePage } from './pages/HomePage'
 import { LoginPage } from './pages/LoginPage'
@@ -42,6 +43,7 @@ export default function App() {
             <Route path="clubs/:clubId" element={<ClubAccessRoute section="club"><ClubPage /></ClubAccessRoute>} />
             <Route path="clubs/:clubId/manage" element={<ClubAccessRoute section="manage"><HeadManagePage /></ClubAccessRoute>} />
             <Route path="clubs/:clubId/cotisations" element={<ClubAccessRoute section="cotisations"><CotisationsPage /></ClubAccessRoute>} />
+            <Route path="clubs/:clubId/messages" element={<ClubAccessRoute section="messages"><MessagesInboxPage /></ClubAccessRoute>} />
             <Route path="chat/:groupId" element={<ChatPage />} />
           </Route>
         </Route>

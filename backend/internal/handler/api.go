@@ -364,6 +364,86 @@ func (h *ChatHandler) ListClubGroups(w http.ResponseWriter, r *http.Request) {
 	WriteJSON(w, http.StatusOK, groups)
 }
 
+func (h *ChatHandler) ListInbox(w http.ResponseWriter, r *http.Request) {
+	user, ok := authctx.UserFromContext(r.Context())
+	if !ok {
+		WriteError(w, http.StatusUnauthorized, "authentication required")
+		return
+	}
+	clubID, err := ClubIDFromRequest(r)
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	groups, err := h.chat.ListInbox(r.Context(), user, clubID)
+	if errors.Is(err, service.ErrChatAccessDenied) {
+		WriteError(w, http.StatusForbidden, err.Error())
+		return
+	}
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, "failed to list chat inbox")
+		return
+	}
+	WriteJSON(w, http.StatusOK, groups)
+}
+
+func (h *ChatHandler) CreateDirectChat(w http.ResponseWriter, r *http.Request) {
+	user, ok := authctx.UserFromContext(r.Context())
+	if !ok {
+		WriteError(w, http.StatusUnauthorized, "authentication required")
+		return
+	}
+	clubID, err := ClubIDFromRequest(r)
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	var input service.CreateDirectChatInput
+	if err := DecodeJSON(r, &input); err != nil {
+		WriteError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	group, err := h.chat.CreateDirectChat(r.Context(), user.ID, clubID, input)
+	if errors.Is(err, service.ErrChatAccessDenied) {
+		WriteError(w, http.StatusForbidden, err.Error())
+		return
+	}
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusCreated, group)
+}
+
+func (h *ChatHandler) AddGroupMembers(w http.ResponseWriter, r *http.Request) {
+	user, ok := authctx.UserFromContext(r.Context())
+	if !ok {
+		WriteError(w, http.StatusUnauthorized, "authentication required")
+		return
+	}
+	groupID, err := GroupIDFromRequest(r)
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	var input service.AddGroupMembersInput
+	if err := DecodeJSON(r, &input); err != nil {
+		WriteError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	group, err := h.chat.AddGroupMembers(r.Context(), user, groupID, input)
+	if errors.Is(err, service.ErrChatAccessDenied) {
+		WriteError(w, http.StatusForbidden, err.Error())
+		return
+	}
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusOK, group)
+}
+
 func (h *ChatHandler) CreateCommissionGroup(w http.ResponseWriter, r *http.Request) {
 	user, ok := authctx.UserFromContext(r.Context())
 	if !ok {

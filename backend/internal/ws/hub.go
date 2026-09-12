@@ -32,9 +32,10 @@ func NewHub(logger *slog.Logger) *Hub {
 }
 
 type Event struct {
-	Type    string             `json:"type"`
-	GroupID uuid.UUID          `json:"group_id"`
-	Message domain.ChatMessage `json:"message"`
+	Type      string              `json:"type"`
+	GroupID   uuid.UUID           `json:"group_id"`
+	Message   *domain.ChatMessage `json:"message,omitempty"`
+	MessageID *uuid.UUID          `json:"message_id,omitempty"`
 }
 
 func (h *Hub) Register(client *Client) {
@@ -59,11 +60,17 @@ func (h *Hub) Unregister(client *Client) {
 }
 
 func (h *Hub) BroadcastMessage(groupID uuid.UUID, message domain.ChatMessage) {
-	payload, err := json.Marshal(Event{
+	msg := message
+	h.BroadcastEvent(groupID, Event{
 		Type:    "message",
 		GroupID: groupID,
-		Message: message,
+		Message: &msg,
 	})
+}
+
+func (h *Hub) BroadcastEvent(groupID uuid.UUID, event Event) {
+	event.GroupID = groupID
+	payload, err := json.Marshal(event)
 	if err != nil {
 		h.logger.Error("marshal ws event", "error", err)
 		return
