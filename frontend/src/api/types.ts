@@ -162,6 +162,14 @@ export type ChatMessage = {
   user?: User
 }
 
+export type ChatGroupMember = {
+  id: string
+  group_id: string
+  user_id: string
+  joined_at: string
+  user?: User
+}
+
 export type BirthdayMember = {
   user_id: string
   first_name: string
