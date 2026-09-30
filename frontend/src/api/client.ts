@@ -1,6 +1,6 @@
 import type { ApiError } from './types'
 
-const PRODUCTION_API = 'https://pwa-rotaract.onrender.com/api/v1'
+const PRODUCTION_API = 'https://rotaract-civ-api.fly.dev/api/v1'
 
 function normalizeApiBase(raw: string): string {
   const base = raw.trim().replace(/\/$/, '')
@@ -83,4 +83,16 @@ export async function apiUpload<T>(
   }
   if (!res.ok) throw new ApiClientError(res.status, await parseError(res))
   return (await res.json()) as T
+}
+
+/** WebSocket base when API is on Fly (not the Vercel club domain). */
+export function chatWebSocketURL(groupId: string, token: string): string {
+  const path = `/api/v1/ws/chat?token=${encodeURIComponent(token)}&group_id=${encodeURIComponent(groupId)}`
+  if (API.startsWith('http://') || API.startsWith('https://')) {
+    const origin = new URL(API).origin
+    const wsOrigin = origin.replace(/^http/, 'ws')
+    return `${wsOrigin}${path}`
+  }
+  const wsProto = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+  return `${wsProto}//${window.location.host}${path}`
 }

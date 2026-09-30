@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link, useParams } from 'react-router-dom'
-import { apiRequest } from '../api/client'
+import { apiRequest, chatWebSocketURL } from '../api/client'
 import type { ChatGroup, ChatMessage } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
 
@@ -49,9 +49,8 @@ export function ChatPage() {
     let attempt = 0
 
     function connect() {
-      if (closed) return
-      const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws'
-      const ws = new WebSocket(`${protocol}://${window.location.host}/api/v1/ws/chat?token=${token}&group_id=${groupId}`)
+      if (closed || !token || !groupId) return
+      const ws = new WebSocket(chatWebSocketURL(groupId, token))
       wsRef.current = ws
 
       ws.onopen = () => {

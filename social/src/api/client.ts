@@ -1,6 +1,6 @@
 import type { ApiError } from './types'
 
-const PRODUCTION_API = 'https://pwa-rotaract.onrender.com/api/v1'
+const PRODUCTION_API = 'https://rotaract-civ-api.fly.dev/api/v1'
 
 function normalizeApiBase(raw: string): string {
   const base = raw.trim().replace(/\/$/, '')
