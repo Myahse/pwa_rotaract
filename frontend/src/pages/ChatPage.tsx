@@ -16,6 +16,19 @@ function upsertMessage(list: ChatMessage[], message: ChatMessage): ChatMessage[]
   return [...list, message]
 }
 
+const LONG_PRESS_MS = 500
+
+type MessageMenuState = { messageId: string; left: number; top: number }
+
+function menuPosition(clientX: number, clientY: number) {
+  const pad = 8
+  const width = 168
+  const height = 92
+  const left = Math.max(pad, Math.min(clientX, window.innerWidth - width - pad))
+  const top = Math.max(pad, Math.min(clientY, window.innerHeight - height - pad))
+  return { left, top }
+}
+
 export function ChatPage() {
   const { groupId } = useParams<{ groupId: string }>()
   const { token, user, activeClubId } = useAuth()
@@ -31,9 +44,12 @@ export function ChatPage() {
   const [showInfo, setShowInfo] = useState(false)
   const [addMemberIds, setAddMemberIds] = useState<string[]>([])
   const [busy, setBusy] = useState(false)
+  const [messageMenu, setMessageMenu] = useState<MessageMenuState | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
   const wsRef = useRef<WebSocket | null>(null)
   const reconnectTimer = useRef<number | null>(null)
+  const longPressTimer = useRef<number | null>(null)
+  const longPressPoint = useRef<{ x: number; y: number } | null>(null)
 
   const isDirect = group?.group_type === 'custom' && groupMembers.length === 2
   const isCustomGroup = group?.group_type === 'custom' && groupMembers.length > 2
@@ -124,6 +140,42 @@ export function ChatPage() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
+
+  useEffect(() => {
+    if (!messageMenu) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMessageMenu(null)
+    }
+    const onPointerDown = (e: PointerEvent) => {
+      const target = e.target as HTMLElement
+      if (!target.closest('.wa-msg-menu')) setMessageMenu(null)
+    }
+    window.addEventListener('keydown', onKey)
+    document.addEventListener('pointerdown', onPointerDown)
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      document.removeEventListener('pointerdown', onPointerDown)
+    }
+  }, [messageMenu])
+
+  function clearLongPress() {
+    if (longPressTimer.current !== null) {
+      window.clearTimeout(longPressTimer.current)
+      longPressTimer.current = null
+    }
+    longPressPoint.current = null
+  }
+
+  function openMessageMenu(messageId: string, clientX: number, clientY: number) {
+    if (editingId === messageId) return
+    setMessageMenu({ messageId, ...menuPosition(clientX, clientY) })
+  }
+
+  function startEditFromMenu(message: ChatMessage) {
+    setEditingId(message.id)
+    setEditText(message.content)
+    setMessageMenu(null)
+  }
 
   const candidatesToAdd = useMemo(() => {
     const inGroup = new Set(groupMembers.map((m) => m.user_id))
@@ -219,9 +271,32 @@ export function ChatPage() {
         <div className="wa-chat-messages">
           {messages.map((m) => {
             const mine = m.user_id === user?.id
+            const canManage = mine && editingId !== m.id
             return (
               <div key={m.id} className={`wa-bubble-row${mine ? ' mine' : ''}`}>
-                <div className={`wa-bubble${mine ? ' mine' : ''}`}>
+                <div
+                  className={`wa-bubble${mine ? ' mine wa-bubble--own' : ''}`}
+                  onContextMenu={(e) => {
+                    if (!canManage) return
+                    e.preventDefault()
+                    openMessageMenu(m.id, e.clientX, e.clientY)
+                  }}
+                  onTouchStart={(e) => {
+                    if (!canManage) return
+                    const touch = e.touches[0]
+                    if (!touch) return
+                    longPressPoint.current = { x: touch.clientX, y: touch.clientY }
+                    clearLongPress()
+                    longPressTimer.current = window.setTimeout(() => {
+                      const pt = longPressPoint.current
+                      if (pt) openMessageMenu(m.id, pt.x, pt.y)
+                      clearLongPress()
+                    }, LONG_PRESS_MS)
+                  }}
+                  onTouchEnd={clearLongPress}
+                  onTouchMove={clearLongPress}
+                  onTouchCancel={clearLongPress}
+                >
                   {!mine && <span className="wa-bubble-author">{m.user?.first_name ?? 'Membre'}</span>}
                   {editingId === m.id ? (
                     <div className="stack">
@@ -237,16 +312,6 @@ export function ChatPage() {
                   <time>
                     {new Date(m.created_at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
                   </time>
-                  {mine && editingId !== m.id && (
-                    <div className="wa-bubble-actions">
-                      <button type="button" className="btn-ghost btn-small" onClick={() => { setEditingId(m.id); setEditText(m.content) }}>
-                        Modifier
-                      </button>
-                      <button type="button" className="btn-ghost btn-small" onClick={() => deleteMessage(m.id)}>
-                        Supprimer
-                      </button>
-                    </div>
-                  )}
                 </div>
               </div>
             )
@@ -254,6 +319,37 @@ export function ChatPage() {
           <div ref={bottomRef} />
         </div>
       </div>
+
+      {messageMenu && (
+        <div
+          className="wa-msg-menu"
+          role="menu"
+          style={{ left: messageMenu.left, top: messageMenu.top }}
+          onPointerDown={(e) => e.stopPropagation()}
+        >
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              const msg = messages.find((m) => m.id === messageMenu.messageId)
+              if (msg) startEditFromMenu(msg)
+            }}
+          >
+            Modifier
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            className="danger"
+            onClick={() => {
+              void deleteMessage(messageMenu.messageId)
+              setMessageMenu(null)
+            }}
+          >
+            Supprimer
+          </button>
+        </div>
+      )}
 
       <form onSubmit={send} className="wa-composer">
         <input

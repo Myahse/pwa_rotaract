@@ -754,7 +754,36 @@ label { display: grid; gap: 0.3rem; font-weight: 600; font-size: 0.82rem; color:
   color: rgba(0, 0, 0, 0.45);
 }
 .wa-bubble.mine time { color: rgba(0, 0, 0, 0.5); }
-.wa-bubble-actions { display: flex; gap: 0.25rem; margin-top: 0.25rem; flex-wrap: wrap; }
+.wa-bubble--own {
+  cursor: context-menu;
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: manipulation;
+}
+.wa-msg-menu {
+  position: fixed;
+  z-index: 120;
+  min-width: 10.5rem;
+  padding: 0.35rem 0;
+  border-radius: 10px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.14);
+  display: grid;
+}
+.wa-msg-menu button {
+  border: 0;
+  background: transparent;
+  text-align: left;
+  padding: 0.55rem 0.85rem;
+  font: inherit;
+  font-weight: 600;
+  font-size: 0.88rem;
+  color: var(--ink);
+  cursor: pointer;
+}
+.wa-msg-menu button:hover { background: var(--surface); }
+.wa-msg-menu button.danger { color: var(--error); }
 
 .wa-composer {
   display: flex;
