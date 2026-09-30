@@ -59,11 +59,16 @@ func (s *PasswordResetService) Request(ctx context.Context, input RequestPasswor
 	if err := s.tokens.Create(ctx, user.ID, hex.EncodeToString(hash[:]), expiresAt); err != nil {
 		return err
 	}
-	return s.mailer.SendPasswordReset(email.PasswordResetEmail{
+	mailErr := s.mailer.SendPasswordReset(email.PasswordResetEmail{
 		To: user.Email, FirstName: user.FirstName,
 		ResetURL:  strings.TrimRight(s.publicURL, "/") + "/reset-password?token=" + token,
 		ExpiresAt: expiresAt.Format("02/01/2006 15:04"),
 	})
+	if mailErr != nil {
+		_ = s.tokens.RevokeForUser(ctx, user.ID)
+		return mailErr
+	}
+	return nil
 }
 
 func (s *PasswordResetService) Complete(ctx context.Context, input CompletePasswordResetInput) error {

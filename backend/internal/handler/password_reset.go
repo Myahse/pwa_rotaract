@@ -4,6 +4,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"strings"
 
 	"github.com/rotaract-civ/backend/internal/service"
 )
@@ -25,6 +26,10 @@ func (h *PasswordResetHandler) Request(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := h.resets.Request(r.Context(), input); err != nil {
 		h.logger.Error("password reset request failed", "err", err)
+		if strings.Contains(err.Error(), "Brevo") {
+			WriteError(w, http.StatusServiceUnavailable, "Envoi d'email impossible pour le moment. Réessayez plus tard ou contactez votre club.")
+			return
+		}
 		WriteError(w, http.StatusInternalServerError, "failed to request password reset")
 		return
 	}

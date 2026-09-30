@@ -61,3 +61,8 @@ func (r *PasswordResetRepository) MarkUsed(ctx context.Context, id uuid.UUID) er
 	_, err := r.pool.Exec(ctx, `UPDATE password_reset_tokens SET used_at = NOW() WHERE id = $1 AND used_at IS NULL`, id)
 	return err
 }
+
+func (r *PasswordResetRepository) RevokeForUser(ctx context.Context, userID uuid.UUID) error {
+	_, err := r.pool.Exec(ctx, `DELETE FROM password_reset_tokens WHERE user_id = $1`, userID)
+	return err
+}

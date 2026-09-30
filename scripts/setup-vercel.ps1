@@ -24,7 +24,7 @@ $projects = @(
   @{
     Dir = "frontend"
     Name = "rotaract-app"
-    Domain = "app.rotaractiugb.com"
+    Domain = "club.rotaractiugb.com"
     EnvFile = ".env"
   },
   @{
@@ -87,4 +87,4 @@ foreach ($project in $projects) {
 
 Write-Host ""
 Write-Host "Done. Root Directory is set automatically for each project." -ForegroundColor Cyan
-Write-Host "API rewrite target: https://pwa-rotaract.onrender.com (not api.rotaractiugb.com — that is Tombola)." -ForegroundColor DarkGray
+Write-Host "API rewrites in each vercel.json → https://rotaract-civ-api.fly.dev. Remove VITE_API_BASE on Vercel or point it at Fly (not Render)." -ForegroundColor DarkGray

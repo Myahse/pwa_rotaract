@@ -10,10 +10,19 @@ function normalizeApiBase(raw: string): string {
   return `${base}/api/v1`
 }
 
+function isStaleRenderApi(base: string): boolean {
+  return /onrender\.com/i.test(base)
+}
+
+/** Prod on Vercel: same-origin /api/v1 (vercel.json → Fly). Avoids CORS and stale Render env. */
 function resolveApiBase(): string {
   const fromEnv = import.meta.env.VITE_API_BASE as string | undefined
-  if (fromEnv?.trim()) return normalizeApiBase(fromEnv)
-  if (import.meta.env.PROD) return PRODUCTION_API
+  if (fromEnv?.trim()) {
+    const normalized = normalizeApiBase(fromEnv)
+    if (import.meta.env.PROD && isStaleRenderApi(normalized)) return '/api/v1'
+    return normalized
+  }
+  if (import.meta.env.PROD) return '/api/v1'
   return '/api/v1'
 }
 

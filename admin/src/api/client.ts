@@ -10,10 +10,18 @@ function normalizeApiBase(raw: string): string {
   return `${base}/api/v1`
 }
 
+function isStaleRenderApi(base: string): boolean {
+  return /onrender\.com/i.test(base)
+}
+
 function resolveApiBase(): string {
   const fromEnv = import.meta.env.VITE_API_BASE as string | undefined
-  if (fromEnv?.trim()) return normalizeApiBase(fromEnv)
-  if (import.meta.env.PROD) return PRODUCTION_API
+  if (fromEnv?.trim()) {
+    const normalized = normalizeApiBase(fromEnv)
+    if (import.meta.env.PROD && isStaleRenderApi(normalized)) return '/api/v1'
+    return normalized
+  }
+  if (import.meta.env.PROD) return '/api/v1'
   return '/api/v1'
 }
 
@@ -41,7 +49,7 @@ async function parseJsonBody<T>(res: Response, body: string): Promise<T> {
   if (isHtmlBody(body)) {
     throw new ApiClientError(
       res.status,
-      'Réponse HTML inattendue : l’API n’est pas joignable sur cette URL. Utilisez le déploiement Vercel (rewrites /api) ou définissez VITE_API_BASE vers le backend Render.',
+      'Réponse HTML inattendue : l’API n’est pas joignable sur cette URL. Utilisez le déploiement Vercel (rewrites /api) ou VITE_API_BASE vers Fly.',
     )
   }
   if (!body.trim()) {
