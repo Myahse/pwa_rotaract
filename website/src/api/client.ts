@@ -11,9 +11,9 @@ function normalizeApiBase(raw: string): string {
 }
 
 function resolveApiBase(): string {
-  if (import.meta.env.PROD) return PRODUCTION_API
   const fromEnv = import.meta.env.VITE_API_BASE as string | undefined
   if (fromEnv?.trim()) return normalizeApiBase(fromEnv)
+  if (import.meta.env.PROD) return PRODUCTION_API
   return '/api/v1'
 }
 
@@ -37,6 +37,12 @@ async function parseError(res: Response): Promise<string> {
   }
 }
 
+function networkErrorMessage(): string {
+  return import.meta.env.PROD
+    ? 'Le serveur API est indisponible (maintenance ou hébergement suspendu). Réessayez dans quelques minutes.'
+    : `Impossible de joindre l’API (${API}). Démarrez le backend local ou vérifiez VITE_API_BASE.`
+}
+
 export async function apiRequest<T>(
   path: string,
   options: RequestInit = {},
@@ -46,7 +52,12 @@ export async function apiRequest<T>(
     headers.set('Content-Type', 'application/json')
   }
 
-  const res = await fetch(`${API}${path}`, { ...options, headers })
+  let res: Response
+  try {
+    res = await fetch(`${API}${path}`, { ...options, headers })
+  } catch {
+    throw new ApiClientError(0, networkErrorMessage())
+  }
   if (!res.ok) {
     throw new ApiClientError(res.status, await parseError(res))
   }
@@ -57,7 +68,12 @@ export async function apiRequest<T>(
 }
 
 export async function apiUpload<T>(path: string, body: FormData): Promise<T> {
-  const res = await fetch(`${API}${path}`, { method: 'POST', body })
+  let res: Response
+  try {
+    res = await fetch(`${API}${path}`, { method: 'POST', body })
+  } catch {
+    throw new ApiClientError(0, networkErrorMessage())
+  }
   if (!res.ok) {
     throw new ApiClientError(res.status, await parseError(res))
   }

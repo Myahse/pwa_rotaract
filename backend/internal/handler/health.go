@@ -75,6 +75,14 @@ func (h *HealthHandler) Status(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func (h *HealthHandler) Root(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path != "/" {
+		http.NotFound(w, r)
+		return
+	}
+	http.Redirect(w, r, "/api/v1/status", http.StatusTemporaryRedirect)
+}
+
 func writeJSON(w http.ResponseWriter, status int, payload any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)

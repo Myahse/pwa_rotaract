@@ -11,9 +11,9 @@ function normalizeApiBase(raw: string): string {
 }
 
 function resolveApiBase(): string {
-  if (import.meta.env.PROD) return PRODUCTION_API
   const fromEnv = import.meta.env.VITE_API_BASE as string | undefined
   if (fromEnv?.trim()) return normalizeApiBase(fromEnv)
+  if (import.meta.env.PROD) return PRODUCTION_API
   return '/api/v1'
 }
 
@@ -50,7 +50,15 @@ export async function apiRequest<T>(
     headers.set('Authorization', `Bearer ${token}`)
   }
 
-  const res = await fetch(`${API}${path}`, { ...options, headers })
+  let res: Response
+  try {
+    res = await fetch(`${API}${path}`, { ...options, headers })
+  } catch {
+    const message = import.meta.env.PROD
+      ? 'Serveur API indisponible. Réessayez dans quelques minutes.'
+      : `Impossible de joindre l’API (${API}).`
+    throw new ApiClientError(0, message)
+  }
   if (!res.ok) {
     throw new ApiClientError(res.status, await parseError(res))
   }
@@ -67,7 +75,12 @@ export async function apiUpload<T>(
 ): Promise<T> {
   const headers = new Headers()
   if (token) headers.set('Authorization', `Bearer ${token}`)
-  const res = await fetch(`${API}${path}`, { method: 'POST', body, headers })
+  let res: Response
+  try {
+    res = await fetch(`${API}${path}`, { method: 'POST', body, headers })
+  } catch {
+    throw new ApiClientError(0, 'Serveur API indisponible. Réessayez dans quelques minutes.')
+  }
   if (!res.ok) throw new ApiClientError(res.status, await parseError(res))
   return (await res.json()) as T
 }

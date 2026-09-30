@@ -23,6 +23,7 @@ export function JoinPage() {
 
   function mapError(err: unknown) {
     if (err instanceof ApiClientError) {
+      if (err.status === 0) return err.message
       if (err.message.includes('already a member')) return t.joinAlreadyMember
       if (err.message.includes('pending access request')) return t.joinPending
       if (err.message.includes('password is required')) return t.joinPasswordRequired

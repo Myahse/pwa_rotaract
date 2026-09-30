@@ -165,6 +165,7 @@ func (s *Server) buildRouter() (chi.Router, *scheduler.BirthdayScheduler, error)
 	}
 	r.Use(cors.Handler(corsOptions))
 
+	r.Get("/", healthHandler.Root)
 	r.Get("/health", healthHandler.Health)
 	r.Get("/ready", healthHandler.Ready)
 
